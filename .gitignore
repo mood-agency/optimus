@@ -1,3 +1,42 @@
+# For pyspark:
+
+*.ipynb_checkpoints/
+*.iml
+*.csv
+*.xls*
+*.parquet
+*.swp
+*.log
+
+# Directory-based project format:
+.idea/
+
+# File-based project format:
+*.ipr
+*.iws
+
+# Intellij
+/out/
+
+.idea_modules/
+atlassian-ide-plugin.xml
+
+# Crashlytics plugin
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+
+metastore_db/*
+
+
+
+
+
+
+
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
