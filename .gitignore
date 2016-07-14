@@ -2,7 +2,6 @@
 
 *.ipynb_checkpoints/
 *.iml
-*.csv
 *.xls*
 *.parquet
 *.swp
