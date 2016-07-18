@@ -744,7 +744,7 @@ class DataFrameAnalizer():
 
     def writeJson(self, jsonCols, pathToJsonFile):
 
-        assert isinstance(jsonCols, dict), "Error: columnAnalyse must be run before writeJson function."
+        #assert isinstance(jsonCols, dict), "Error: columnAnalyse must be run before writeJson function."
 
         jsonCols = dumps(jsonCols)
 

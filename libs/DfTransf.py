@@ -1,10 +1,10 @@
 # Importing sql types
-from pyspark.sql.types import StringType, IntegerType, FloatType, DoubleType, StructType, StructField
+from pyspark.sql.types import StringType, IntegerType, FloatType, DoubleType, StructType, StructField, ArrayType
 # Importing sql functions
 from pyspark.sql.functions import col, udf, trim, lit, format_number, months_between, date_format, unix_timestamp, current_date, abs as mag
 from pyspark.mllib.linalg import Vectors
 from pyspark.ml.feature import MinMaxScaler, VectorAssembler
-
+import re
 import string
 import unicodedata
 import pyspark.sql.dataframe
@@ -17,6 +17,9 @@ from shutil import rmtree
 import urllib.request
 # Importing SQLContext:
 from pyspark.sql import SQLContext
+
+# Importing dumps
+from json import dumps
 
 class DataFrameTransformer():
     """DataFrameTransformer is a class to make transformations in dataFrames"""
@@ -838,7 +841,7 @@ class DataFrameTransformer():
 
         assert (type(featureNames) == type([])), "Error: featureNames must be a list of strings."
         # Function to extract value from list column:
-        func = udf (lambda x , index: float(x[index]), DoubleType())
+        func = udf (lambda x , index: x[index])
 
         exprs = []
         # Recursive function:
@@ -908,6 +911,44 @@ class DataFrameTransformer():
 
         self.__df = model.transform(tempDF).select(*exprs)
         return self
+
+
+    def splitStrCol(self, column, featureNames, mark):
+        """This functions split a column into different ones. In the case of this method, the column provided should
+        be a string of the following form 'word,foo'.
+
+        :param column       Name of the target column, this column is going to be replaced.
+        :param featureNames     List of strings of the new column names after splitting the strings.
+        :param mark         String that specifies the splitting mark of the string, this frequently is ',' or ';'.
+        """
+
+        # Check if column argument is a string datatype:
+        self.__assertTypeStr(column, "column")
+
+        # Check if mark argument is a string datatype:
+        self.__assertTypeStr(mark, "mark")
+
+        assert (column in self.__df.columns), "Error: column specified does not exist in dataFrame."
+
+        assert (type(featureNames) == type([])), "Error: featureNames must be a list of strings."
+
+        # Setting a udf that split the string into a list of strings.
+        # This is "word, foo" ----> ["word", "foo"]
+        func = udf(lambda x: x.split(mark), ArrayType(StringType()))
+
+        self.__df = self.__df.withColumn(column, func(col(column)))
+
+        self.__df.show()
+        
+        self.undoVecAssembler(column=column, featureNames=featureNames)
+
+    def writeDFasJson(self, path):
+
+        p = re.sub("}\'","}",re.sub("\'{","{",str(self.__df.toJSON().collect())))
+
+        with open(path, 'w') as outfile:
+            # outfile.write(str(jsonCols).replace("'", "\""))
+            outfile.write(p)
 
 if __name__ == "__main__":
     pass
