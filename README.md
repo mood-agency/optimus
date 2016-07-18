@@ -14,11 +14,9 @@ Since functions in this library are mounted in the Spark SQL Context, it offers 
 
 ## Installation:
 1 - Download Transformer.py and paste it in the project folder
-
 2 - When starting pySpark in terminal, write the following line:
 
 `$ pyspark --py-files DFTransf.py`
-
 
 
 ## DFTransformer class
@@ -31,7 +29,6 @@ Since functions in this library are mounted in the Spark SQL Context, it offers 
 * DFTransformer.deleteRow(func)
 * DFTransformer.keepCol(columns)
 * DFTransformer.setCol(columns, func, dataType)
-
 * DFTransformer.clearAccents(columns)
 * DFTransformer.removeSpecialChars(columns)
 * DFTransformer.renameCol(column, newName)
@@ -50,7 +47,6 @@ DFTransformer class receives a dataFrame as an argument. This class has all
 methods listed aboved.
 
 Note: Every possible transformation make changes over this dataFrame and overwrites it.
-
 
 The following code shows how to instanciate the class to transform a dataFrame:
 
