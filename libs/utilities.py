@@ -38,8 +38,7 @@ class Utilites():
                 .options(header=header) \
                 .options(delimiter=delimiterMark) \
                 .options(inferSchema='true') \
-                .load(path) \
-                .cache()
+                .load(path)
 
     # hadoop fs -ls hdfs://server.mcbo.mood.com.ve:8020/pruebas
     def setCheckPointFolder(self, path, fileSystem):

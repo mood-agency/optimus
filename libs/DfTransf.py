@@ -1,7 +1,8 @@
 # Importing sql types
 from pyspark.sql.types import StringType, IntegerType, FloatType, DoubleType, StructType, StructField, ArrayType
 # Importing sql functions
-from pyspark.sql.functions import col, udf, trim, lit, format_number, months_between, date_format, unix_timestamp, current_date, abs as mag
+from pyspark.sql.functions import col, udf, trim, lit, format_number, months_between, date_format, unix_timestamp, \
+    current_date, abs as mag
 from pyspark.mllib.linalg import Vectors
 from pyspark.ml.feature import MinMaxScaler, VectorAssembler
 import re
@@ -21,8 +22,10 @@ from pyspark.sql import SQLContext
 # Importing dumps
 from json import dumps
 
+
 class DataFrameTransformer():
     """DataFrameTransformer is a class to make transformations in dataFrames"""
+
     def __init__(self, df):
         """Class constructor.
         :param  df      DataFrame to be transformed.
@@ -30,8 +33,34 @@ class DataFrameTransformer():
         # Dataframe
         self.__df = df
         # SparkContext:
-        #self.__sqlContext = SQLContext(self.__df.sql_ctx)
+        # self.__sqlContext = SQLContext(self.__df.sql_ctx)
         self.__sqlContext = self.__df.sql_ctx
+        self.__numberOfTransformations = 0
+
+    def __assertTypeStrOrList(self, variable, nameArg):
+        """This function asserts if variable is a string or a list dataType."""
+        assert (type(variable) == type('str') or type(variable) == type([])), \
+            "Error: %s argument must be a string or a list." % nameArg
+
+    def __assertTypeStr(self, variable, nameArg):
+        """This function asserts if variable is a string or a list dataType."""
+        assert (type(variable) == type('str')), \
+            "Error: %s argument must be a string." % nameArg
+
+    def __assertColsInDF(self, columnsProvided, columnsDF):
+        """This function asserts if columnsProvided exists in dataFrame.
+        Inputs:
+        columnsProvided: the list of columns to be process.
+        columnsDF: list of columns's dataFrames
+        """
+        colNotValids = (set([column for column in columnsProvided]).difference(set([column for column in columnsDF])))
+        assert (colNotValids == set()), 'Error: The following columns do not exits in dataFrame: %s' % colNotValids
+
+    def __addTransformation(self):
+        self.__numberOfTransformations += 1
+
+        if (self.__numberOfTransformations > 10):
+            self.checkPoint()
 
     def setDataframe(self, df):
         """This function set a dataframe into the class for subsequent actions.
@@ -49,6 +78,8 @@ class DataFrameTransformer():
         dataframe, columns must be equal to '*'"""
         func = lambda cell: cell.lower() if cell is not None else cell
         self.setCol(columns, func, 'string')
+
+        self.__addTransformation()
         return self
 
     def upperCase(self, columns):
@@ -57,27 +88,9 @@ class DataFrameTransformer():
         dataframe, columns must be equal to '*'"""
         func = lambda cell: cell.upper() if cell is not None else cell
         self.setCol(columns, func, 'string')
+
+        self.__addTransformation()
         return self
-
-    def __assertTypeStrOrList(self, variable, nameArg):
-        """This function asserts if variable is a string or a list dataType."""
-        assert (type(variable) == type('str') or type(variable) == type([])), \
-                "Error: %s argument must be a string or a list." % nameArg
-
-    def __assertTypeStr(self, variable, nameArg):
-        """This function asserts if variable is a string or a list dataType."""
-        assert (type(variable) == type('str')), \
-                "Error: %s argument must be a string." % nameArg
-
-
-    def __assertColsInDF(self, columnsProvided, columnsDF):
-        """This function asserts if columnsProvided exists in dataFrame.
-        Inputs:
-        columnsProvided: the list of columns to be process.
-        columnsDF: list of columns's dataFrames
-        """
-        colNotValids = (set([column for column in columnsProvided]).difference(set([column for column in columnsDF])))
-        assert (colNotValids == set()), 'Error: The following columns do not exits in dataFrame: %s' % colNotValids
 
     def checkPoint(self):
         """This method is a very useful function to break lineage of transformations. By default Spark uses the lazy
@@ -95,12 +108,8 @@ class DataFrameTransformer():
         # Checkpointing of dataFrame. One question can be thought. Why not use cache() or persist() instead of
         # checkpoint. This is because cache() and persis() apparently do not break the lineage of operations,
         self.__df.rdd.checkpoint()
-        tempDF = self.__sqlContext.createDataFrame(self.__df.rdd, self.__df.schema)
-        self.__df = tempDF
-        # Deletes the temporal dataFrame
-        del tempDF
-        # It is performed an action to assert the checkpointing computation
-        print (self.__df.count())
+        self.__df.rdd.count()
+        self.__df = self.__sqlContext.createDataFrame(self.__df.rdd, self.__df.schema)
 
     def trimCol(self, columns):
         """This methods cut left and right extra spaces in column strings provided by user.
@@ -109,9 +118,13 @@ class DataFrameTransformer():
 
         :return transformer object
         """
+
         # Function to trim spaces in columns with strings datatype
         def colTrim(columns):
-            exprs = [trim(col(c)).alias(c) if (c in columns) and (c in validCols) else c for (c, t) in self.__df.dtypes]
+            exprs = [trim(col(c)).alias(c)
+                     if (c in columns) and (c in validCols)
+                     else c
+                     for (c, t) in self.__df.dtypes]
             self.__df = self.__df.select(*exprs)
 
         # Check if columns argument must be a string or list datatype:
@@ -131,6 +144,8 @@ class DataFrameTransformer():
 
         # Trimming spaces in columns:
         colTrim(columns)
+
+        self.__addTransformation()
 
         # Returning the transformer object for able chaining operations
         return self
@@ -158,9 +173,10 @@ class DataFrameTransformer():
         # Calling colDrop function
         colDrop(columns)
 
+        self.__addTransformation()
+
         # Returning the transformer object for able chaining operations
         return self
-
 
     def replaceCol(self, search, changeTo, columns):
         """This method search the 'search' value in DataFrame columns specified in 'columns' in order to replace it
@@ -186,13 +202,16 @@ class DataFrameTransformer():
         self.__assertTypeStrOrList(columns, "columns")
 
         # Asserting search parameter is a string or a number
-        assert isinstance(search, str) or isinstance(search, float) or isinstance(search, int), "Error: Search parameter must be a number or string"
+        assert isinstance(search, str) or isinstance(search, float) or isinstance(search,
+                                                                                  int), "Error: Search parameter must be a number or string"
 
         # Asserting changeTo parameter is a string or a number
-        assert isinstance(changeTo, str) or isinstance(changeTo, float) or isinstance(changeTo, int), "Error: changeTo parameter must be a number or string"
+        assert isinstance(changeTo, str) or isinstance(changeTo, float) or isinstance(changeTo,
+                                                                                      int), "Error: changeTo parameter must be a number or string"
 
         # Asserting search and changeTo have same type
-        assert type(search) == type(changeTo), 'Error: Search and ChangeTo must have same datatype: Integer, String, Float'
+        assert type(search) == type(
+            changeTo), 'Error: Search and ChangeTo must have same datatype: Integer, String, Float'
 
         # Change
         types = {type(''): 'string', type(int(1)): 'int', type(float(1.2)): 'float', type(1.2): 'double'};
@@ -210,12 +229,15 @@ class DataFrameTransformer():
 
         colNotValids = (set([column for column in columns]).difference(set([column for column in validCols])))
 
-        assert (colNotValids == set()), 'Error: The following columns do not have same datatype argument provided: %s' % colNotValids
+        assert (
+            colNotValids == set()), 'Error: The following columns do not have same datatype argument provided: %s' % colNotValids
 
         colReplace(columns)
+
+        self.__addTransformation()
+
         # Returning the transformer object for able chaining operations
         return self
-
 
     def deleteRow(self, func):
         """This function is an alias of filter and where spark functions.
@@ -226,6 +248,9 @@ class DataFrameTransformer():
                 func is an expression where col is a pyspark.sql.function.
         """
         self.__df = self.__df.filter(func)
+
+        self.__addTransformation()  # checkpoint in case
+
         # Returning the transformer object for able chaining operations
         return self
 
@@ -246,15 +271,15 @@ class DataFrameTransformer():
         dictTypes = {'string': StringType(), 'str': StringType(), 'integer': IntegerType(),
                      'int': IntegerType(), 'float': FloatType(), 'double': DoubleType(), 'Double': DoubleType()}
 
-        Types = {'string': 'string', 'str': 'string', 'String': 'string','integer': 'int',
-                     'int': 'int', 'float': 'float', 'double': 'double', 'Double': 'double'}
+        Types = {'string': 'string', 'str': 'string', 'String': 'string', 'integer': 'int',
+                 'int': 'int', 'float': 'float', 'double': 'double', 'Double': 'double'}
 
         try:
             function = udf(func, dictTypes[dataType])
         except KeyError:
             assert False, "Error, dataType not recognized"
 
-        def colSet(columns ,function):
+        def colSet(columns, function):
             exprs = [function(col(c)).alias(c) if c in columns else c for (c, t) in self.__df.dtypes]
             try:
                 self.__df = self.__df.select(*exprs)
@@ -278,9 +303,13 @@ class DataFrameTransformer():
 
         colNotValids = (set([column for column in columns]).difference(set([column for column in validCols])))
 
-        assert (colNotValids == set()), 'Error: The following columns do not have same datatype argument provided: %s' % colNotValids
+        assert (
+            colNotValids == set()), 'Error: The following columns do not have same datatype argument provided: %s' % colNotValids
 
         colSet(columns, function)
+
+        self.__addTransformation()  # checkpoint in case
+
         # Returning the transformer object for able chaining operations
         return self
 
@@ -291,10 +320,10 @@ class DataFrameTransformer():
 
         :return transformer object
         """
+
         def colKeep(columns):
             exprs = filter(lambda c: c in columns, self.__df.columns)
             self.__df = self.__df.select(*exprs)
-
 
         # Check if columns argument must be a string or list datatype:
         self.__assertTypeStrOrList(columns, "columns")
@@ -307,6 +336,9 @@ class DataFrameTransformer():
 
         # Calling colDrop function
         colKeep(columns)
+
+        self.__addTransformation()  # checkpoint in case
+
         # Returning the transformer object for able chaining operations
         return self
 
@@ -335,7 +367,8 @@ class DataFrameTransformer():
 
         colNotValids = (set([column for column in columns]).difference(set([column for column in validCols])))
 
-        assert (colNotValids == set()), 'Error: The following columns do not have same datatype argument provided: %s' % colNotValids
+        assert (
+            colNotValids == set()), 'Error: The following columns do not have same datatype argument provided: %s' % colNotValids
 
         # Receives  a string as an argument
         def remove_accents(inputStr):
@@ -348,6 +381,9 @@ class DataFrameTransformer():
         function = udf(lambda x: remove_accents(x) if x != None else x, StringType())
         exprs = [function(col(c)).alias(c) if (c in columns) and (c in validCols) else c for c in self.__df.columns]
         self.__df = self.__df.select(*exprs)
+
+        self.__addTransformation()  # checkpoint in case
+
         # Returning the transformer object for able chaining operations
         return self
 
@@ -374,12 +410,13 @@ class DataFrameTransformer():
 
         colNotValids = (set([column for column in columns]).difference(set([column for column in validCols])))
 
-        assert (colNotValids == set()), 'Error: The following columns do not have same datatype argument provided: %s' % colNotValids
+        assert (
+            colNotValids == set()), 'Error: The following columns do not have same datatype argument provided: %s' % colNotValids
 
         def rmSpecChars(inputStr):
-            #Remove all punctuation and control characters
+            # Remove all punctuation and control characters
             for punct in (set(inputStr) & set(string.punctuation)):
-                inputStr = inputStr.replace(punct,"")
+                inputStr = inputStr.replace(punct, "")
             return inputStr
 
         # User define function that does operation in cells
@@ -388,6 +425,9 @@ class DataFrameTransformer():
         exprs = [function(c).alias(c) if (c in columns) and (c in validCols)  else c for c in self.__df.columns]
 
         self.__df = self.__df.select(*exprs)
+
+        self.__addTransformation()  # checkpoint in case
+
         # Returning the transformer object for able chaining operations
         return self
 
@@ -397,9 +437,11 @@ class DataFrameTransformer():
 
         """
         # Asserting columns is string or list:
-        assert (type(columns) == type([])) and (type(columns[0]) == type((1,2))) , "Error: Column argument must be a list of tuples"
+        assert (type(columns) == type([])) and (
+            type(columns[0]) == type((1, 2))), "Error: Column argument must be a list of tuples"
 
-        colNotValids = (set([column[0] for column in columns]).difference(set([column for column in self.__df.columns])))
+        colNotValids = (
+            set([column[0] for column in columns]).difference(set([column for column in self.__df.columns])))
 
         assert (colNotValids == set()), 'Error: The following columns do not exits in dataFrame: %s' % colNotValids
 
@@ -408,6 +450,8 @@ class DataFrameTransformer():
         notInType = filter(lambda c: c not in oldNames, self.__df.columns)
 
         exprs = [col(column[0]).alias(column[1]) for column in columns] + [col(column) for column in notInType]
+
+        self.__addTransformation()  # checkpoint in case
 
         self.__df = self.__df.select(*exprs)
         return self
@@ -428,14 +472,17 @@ class DataFrameTransformer():
         self.__assertTypeStr(column, "column")
 
         # Asserting columns is string or list:
-        assert type(strToReplace) == type('') or (type(strToReplace) == type({})), "Error: StrToReplace argument must be a string or a dict"
+        assert type(strToReplace) == type('') or (
+            type(strToReplace) == type({})), "Error: StrToReplace argument must be a string or a dict"
 
         if type(strToReplace) == type({}):
             assert (strToReplace != {}), "Error, StrToReplace must be a string or a non empty python dictionary"
-            assert (listStr == None), "Error, If a python dictionary if specified, listStr argument must be None: listStr=None"
+            assert (
+                listStr == None), "Error, If a python dictionary if specified, listStr argument must be None: listStr=None"
 
         # Asserting columns is string or list:
-        assert (type(listStr) == type([]) and listStr != []) or (listStr==None), "Error: Column argument must be a non empty list"
+        assert (type(listStr) == type([]) and listStr != []) or (
+            listStr == None), "Error: Column argument must be a non empty list"
 
         if type(strToReplace) == type(''):
             assert listStr != None, "Error: listStr cannot be None if StrToReplace is a String, please you need to specify \
@@ -469,13 +516,17 @@ class DataFrameTransformer():
                     if strTest in strToReplace[key]:
                         strTest = key
                 return strTest
+
             func = udf(lambda cell: replaceFromDic(cell) if cell != None else cell, StringType())
 
         # Calling udf for each row of column provided by user. The rest of dataFrame is
         # maintained the same.
-        exprs = [func(col(c)).alias(c) if c==column[0] else c for c in self.__df.columns]
+        exprs = [func(col(c)).alias(c) if c == column[0] else c for c in self.__df.columns]
 
         self.__df = self.__df.select(*exprs)
+
+        self.__addTransformation()  # checkpoint in case
+
         return self
 
     def moveCol(self, column, refCol, position):
@@ -498,7 +549,8 @@ class DataFrameTransformer():
         self.__assertTypeStr(refCol, "refCol")
 
         # Asserting parameters are not empty strings:
-        assert ((column != '') and (refCol != '') and (position != '')), "Error: Input parameters can't be empty strings"
+        assert (
+            (column != '') and (refCol != '') and (position != '')), "Error: Input parameters can't be empty strings"
 
         # Check if refCol is in dataframe
         self.__assertColsInDF(columnsProvided=[refCol], columnsDF=self.__df.columns)
@@ -507,7 +559,8 @@ class DataFrameTransformer():
         self.__assertTypeStr(position, "position")
 
         # Asserting if position is 'after' or 'before'
-        assert (position == 'after') or (position == 'before'), "Error: Position parameter only can be 'after' or 'before'"
+        assert (position == 'after') or (
+            position == 'before'), "Error: Position parameter only can be 'after' or 'before'"
 
         # Finding position of column to move:
         findCol = lambda columns, column: [index for index, c in enumerate(columns) if c == column]
@@ -518,19 +571,22 @@ class DataFrameTransformer():
         if position == 'after':
             # Check if the movement is from right to left:
             if newIndex[0] >= oldIndex[0]:
-                columns.insert(newIndex[0], columns.pop(oldIndex[0])) # insert and delete a element
-            else: # the movement is form left to right:
+                columns.insert(newIndex[0], columns.pop(oldIndex[0]))  # insert and delete a element
+            else:  # the movement is form left to right:
                 columns.insert(newIndex[0] + 1, columns.pop(oldIndex[0]))
-        else: # If position if before:
-            if newIndex[0] >= oldIndex[0]: # Check if the movement if from right to left:
+        else:  # If position if before:
+            if newIndex[0] >= oldIndex[0]:  # Check if the movement if from right to left:
                 columns.insert(newIndex[0] - 1, columns.pop(oldIndex[0]))
-            elif newIndex[0] < oldIndex[0]: # Check if the movement if from left to right:
+            elif newIndex[0] < oldIndex[0]:  # Check if the movement if from left to right:
                 columns.insert(newIndex[0], columns.pop(oldIndex[0]))
 
         self.__df = self.__df[columns]
+
+        self.__addTransformation()  # checkpoint in case
+
         return self
 
-    def contarTable (self, colId, col1, newColFeature, listToAssign):
+    def contarTable(self, colId, col1, newColFeature, listToAssign):
         """
         This function can be used to split a feature with some extra information in order
         to make a new column feature.
@@ -548,7 +604,8 @@ class DataFrameTransformer():
         assert type(listToAssign) == type([]), "Error: position argument must be a list"
 
         # Asserting parameters are not empty strings:
-        assert ((colId != '') and (col1 != '') and (newColFeature != '')), "Error: Input parameters can't be empty strings"
+        assert (
+            (colId != '') and (col1 != '') and (newColFeature != '')), "Error: Input parameters can't be empty strings"
 
         # Check if col1 argument a string datatype:
         self.__assertTypeStr(col1, "col1")
@@ -588,6 +645,9 @@ class DataFrameTransformer():
         # Cleaning dataframe:
         dfMod = dfMod.drop(colId + '_other').na.fill(0).withColumnRenamed('count', newColFeature)
         self.__df = dfMod
+
+        self.__addTransformation()  # checkpoint in case
+
         return self
 
     def dateTransform(self, columns, currentFormat, outputFormat):
@@ -611,9 +671,13 @@ class DataFrameTransformer():
         # Check if columns to be process are in dataframe
         self.__assertColsInDF(columnsProvided=columns, columnsDF=self.__df.columns)
 
-        exprs = [date_format(unix_timestamp(c, currentFormat).cast("timestamp"), outputFormat).alias(c) if c in columns else c for c in self.__df.columns]
+        exprs = [date_format(unix_timestamp(c, currentFormat).cast("timestamp"), outputFormat).alias(
+            c) if c in columns else c for c in self.__df.columns]
 
         self.__df = self.__df.select(*exprs)
+
+        self.__addTransformation()  # checkpoint in case
+
         return self
 
     def ageCalculate(self, column, dateFormat, nameColAge):
@@ -628,7 +692,7 @@ class DataFrameTransformer():
         self.__assertTypeStr(column, "column")
 
         # Check if dateFormat argument a string datatype:
-        self.__assertTypeStr(dateFormat,  "dateFormat")
+        self.__assertTypeStr(dateFormat, "dateFormat")
 
         # Asserting if column if in dataFrame:
         assert column in self.__df.columns, "Error: Column assigned in column argument does not exist in dataFrame"
@@ -637,12 +701,16 @@ class DataFrameTransformer():
         Format = "yyyy-MM-dd"  # Some SimpleDateFormat string
 
         exprs = format_number(
-        mag(
-            months_between(date_format(
-                    unix_timestamp(column, dateFormat).cast("timestamp"), Format), current_date())/ 12), 4).alias(nameColAge)
-    #         .alias('Age')
+            mag(
+                months_between(date_format(
+                    unix_timestamp(column, dateFormat).cast("timestamp"), Format), current_date()) / 12), 4).alias(
+            nameColAge)
+        #         .alias('Age')
 
         self.__df = self.__df.withColumn(nameColAge, exprs)
+
+        self.__addTransformation()  # checkpoint in case
+
         return self
 
     def castFunc(self, colsAndTypes):
@@ -658,18 +726,17 @@ class DataFrameTransformer():
         :return:
         """
 
-
         dictTypes = {'string': StringType(), 'str': StringType(), 'integer': IntegerType(),
                      'int': IntegerType(), 'float': FloatType(), 'double': DoubleType(), 'Double': DoubleType()}
 
-        Types = {'string': 'string', 'str': 'string', 'String': 'string','integer': 'int',
-                     'int': 'int', 'float': 'float', 'double': 'double', 'Double': 'double'}
-
+        Types = {'string': 'string', 'str': 'string', 'String': 'string', 'integer': 'int',
+                 'int': 'int', 'float': 'float', 'double': 'double', 'Double': 'double'}
 
         # Asserting colsAndTypes is string or list:
-        assert type(colsAndTypes) == type('s') or type(colsAndTypes) == type([]), "Error: Column argument must be a string or a list."
+        assert type(colsAndTypes) == type('s') or type(colsAndTypes) == type(
+            []), "Error: Column argument must be a string or a list."
 
-        if type(colsAndTypes) ==  type(''): colsAndTypes = [colsAndTypes]
+        if type(colsAndTypes) == type(''): colsAndTypes = [colsAndTypes]
 
         columnNames = [column[0] for column in colsAndTypes]
 
@@ -678,9 +745,12 @@ class DataFrameTransformer():
 
         notSpecifiedColumns = filter(lambda c: c not in columnNames, self.__df.columns)
 
-        exprs = [col(column[0]).cast(dictTypes[Types[column[1]]]).alias(column[0]) for column in colsAndTypes] + [col(column) for column in notSpecifiedColumns]
+        exprs = [col(column[0]).cast(dictTypes[Types[column[1]]]).alias(column[0]) for column in colsAndTypes] + [
+            col(column) for column in notSpecifiedColumns]
 
         self.__df = self.__df.select(*exprs)
+        self.__addTransformation()  # checkpoint in case
+
         return self
 
     def emptyStrToStr(self, columns, customStr):
@@ -702,9 +772,8 @@ class DataFrameTransformer():
         # If columns is string, make a list:
         if type(columns) == type(' '): columns = [columns]
 
-            # Check if columns to be process are in dataframe
+        # Check if columns to be process are in dataframe
         self.__assertColsInDF(columnsProvided=columns, columnsDF=self.__df.columns)
-
 
         def blank_as_null(x):
             return when(col(x) != "", col(x)).otherwise(customStr)
@@ -712,6 +781,8 @@ class DataFrameTransformer():
         exprs = [blank_as_null(c).alias(c) if (c in columns) and (c in validCols)  else c for c in self.__df.columns]
 
         self.__df = self.__df.select(*exprs)
+        self.__addTransformation()  # checkpoint in case
+
         return self
 
     def operationInType(self, parameters):
@@ -730,7 +801,7 @@ class DataFrameTransformer():
 
         def checkDataType(value):
 
-            try: # Try to parse (to int) register value
+            try:  # Try to parse (to int) register value
                 int(value)
                 # Add 1 if suceed:
                 return 'integer'
@@ -744,11 +815,9 @@ class DataFrameTransformer():
                     # Then, it is a string
                     return 'string'
             except TypeError:
-                    return 'null'
-
+                return 'null'
 
         Types = {type('str'): 'string', type(1): 'int', type(1.0): 'float'}
-
 
         exprs = []
         for column, dataType, func in parameters:
@@ -757,16 +826,18 @@ class DataFrameTransformer():
             # Checking if column exists in dataframe:
             assert column in self.__df.columns, "Error: Column %s specified as columnName argument does not exist in dataframe" % column
             # Checking if column has a valid datatype:
-            assert (dataType in ['integer', 'float', 'string', 'null']), "Error: dataType only can be one of the followings options: integer, float, string, null."
+            assert (dataType in ['integer', 'float', 'string',
+                                 'null']), "Error: dataType only can be one of the followings options: integer, float, string, null."
             # Checking if func parameters is func dataType or None
-            assert (type(func) == type(None) or (type(func) == type(lambda x:x))), "func argument must be a function or NoneType"
-
+            assert (type(func) == type(None) or (
+                type(func) == type(lambda x: x))), "func argument must be a function or NoneType"
 
             if 'function' in str(type(func)):
                 funcUdf = udf(lambda x: func(x) if checkDataType(x) == dataType else x)
 
             if isinstance(func, str) or isinstance(func, int) or isinstance(func, float):
-                assert [x[1] in Types[type(func)] for x in filter(lambda x: x[0]==columnName, self.__df.dtypes)][0], "Error: Column of operation and func argument must be the same global type. Check column type by df.printSchema()"
+                assert [x[1] in Types[type(func)] for x in filter(lambda x: x[0] == columnName, self.__df.dtypes)][
+                    0], "Error: Column of operation and func argument must be the same global type. Check column type by df.printSchema()"
                 funcUdf = udf(lambda x: func if checkDataType(x) == dataType else x)
 
             if func is None:
@@ -774,9 +845,11 @@ class DataFrameTransformer():
 
             exprs.append(funcUdf(col(column)).alias(column))
 
-
         colNotProvided = [x for x in self.__df.columns if x not in [column[0] for column in parameters]]
+
         self.__df = self.__df.select(colNotProvided + [*exprs])
+        self.__addTransformation()  # checkpoint in case
+
         return self
 
     def rowFilterByType(self, columnName, typeToDelete):
@@ -788,12 +861,13 @@ class DataFrameTransformer():
         # Check if typeToDelete argument a string datatype:
         self.__assertTypeStr(typeToDelete, "typeToDelete")
         # Asserting if dataType argument has a valid type:
-        assert (typeToDelete in ['integer', 'float', 'string', 'null']), "Error: dataType only can be one of the followings options: integer, float, string, null."
+        assert (typeToDelete in ['integer', 'float', 'string',
+                                 'null']), "Error: dataType only can be one of the followings options: integer, float, string, null."
 
         # Function for determine if register value is float or int or string:
         def dataType(value):
 
-            try: # Try to parse (to int) register value
+            try:  # Try to parse (to int) register value
                 int(value)
                 # Add 1 if suceed:
                 return 'integer'
@@ -807,11 +881,13 @@ class DataFrameTransformer():
                     # Then, it is a string
                     return 'string'
             except TypeError:
-                    return 'null'
-
+                return 'null'
 
         func = udf(dataType, StringType())
-        self.__df = self.__df.withColumn('types', func(col(columnName))).where((col('types') != typeToDelete)).drop('types')
+        self.__df = self.__df.withColumn('types', func(col(columnName))).where((col('types') != typeToDelete)).drop(
+            'types')
+        self.__addTransformation()  # checkpoint in case
+
         return self
 
     def undoVecAssembler(self, column, featureNames):
@@ -841,17 +917,23 @@ class DataFrameTransformer():
 
         assert (type(featureNames) == type([])), "Error: featureNames must be a list of strings."
         # Function to extract value from list column:
-        func = udf (lambda x , index: x[index])
+        func = udf(lambda x, index: x[index])
 
         exprs = []
+
         # Recursive function:
-        def exprsFunc (column, exprs, featureNames, index):
+        def exprsFunc(column, exprs, featureNames, index):
             if index == 0:
                 return [func(col(column), lit(index)).alias(featureNames[index])]
             else:
-                return exprsFunc(column, exprs, featureNames, index - 1) + [func(col(column), lit(index)).alias(featureNames[index])]
+                return exprsFunc(column, exprs, featureNames, index - 1) + [
+                    func(col(column), lit(index)).alias(featureNames[index])]
 
-        self.__df = self.__df.select([x for x in self.__df.columns] + [*exprsFunc(column, exprs, featureNames, len(featureNames) - 1)]).drop(column)
+        self.__df = self.__df.select(
+            [x for x in self.__df.columns] + [*exprsFunc(column, exprs, featureNames, len(featureNames) - 1)]).drop(
+            column)
+        self.__addTransformation()  # checkpoint in case
+
         return self
 
     def scaleVecCol(self, columns, nameOutputCol):
@@ -910,8 +992,9 @@ class DataFrameTransformer():
         exprs.extend([nameOutputCol])
 
         self.__df = model.transform(tempDF).select(*exprs)
-        return self
+        self.__addTransformation()  # checkpoint in case
 
+        return self
 
     def splitStrCol(self, column, featureNames, mark):
         """This functions split a column into different ones. In the case of this method, the column provided should
@@ -937,18 +1020,19 @@ class DataFrameTransformer():
         func = udf(lambda x: x.split(mark), ArrayType(StringType()))
 
         self.__df = self.__df.withColumn(column, func(col(column)))
-
-        self.__df.show()
-        
         self.undoVecAssembler(column=column, featureNames=featureNames)
+        self.__addTransformation()  # checkpoint in case
 
-    def writeDFasJson(self, path):
+        return self
 
-        p = re.sub("}\'","}",re.sub("\'{","{",str(self.__df.toJSON().collect())))
+    def writeDFAsJson(self, path):
+        p = re.sub("}\'", "}", re.sub("\'{", "{", str(self.__df.toJSON().collect())))
 
         with open(path, 'w') as outfile:
             # outfile.write(str(jsonCols).replace("'", "\""))
             outfile.write(p)
 
+
 if __name__ == "__main__":
     pass
+

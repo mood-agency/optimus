@@ -279,7 +279,7 @@ class DataFrameAnalizer():
     def __analize(self, dfColAnalizer, column, rowNumber,plots, printType, valuesBar, numBars, typesDict):
         sampleTableDict = {'string': 0., 'integer': 0, 'float': 0}
         # Calling verification ruotine to obtain datatype's counts
-        #returns: [number of nulls, number of strings, number of integers, number of floats]
+        #returns: [dataframeColumn, number of nulls, number of strings, number of integers, number of floats]
         dtypeNumbers = self.__verification(dfColAnalizer.select(column), column)
 
         def validColCheck(f):
@@ -316,7 +316,7 @@ class DataFrameAnalizer():
             print("Max value: ", dfColAnalizer.select(cmax(col(column))).first()[0])
 
         # Plot bar stack:
-        if plots==True: self.__bar_stack_type(percentages, column)
+        #if plots==True: self.__bar_stack_type(percentages, column)
 
         if printType == True:
             typeslabels = ['integer', 'float', 'string']
@@ -369,8 +369,9 @@ class DataFrameAnalizer():
 
         missing_values = self.__createDict(
                         ['total', 'empty', 'null'],
-                        [int(np.sum(numbers[0:2])), numbers[0], numbers[1]
+                        [int(np.sum(numbers[0:2])), numbers[1], numbers[0]
                         ])
+
 
         #returns: [number of nulls, number of strings, number of integers, number of floats]
         summaryDict = self.__createDict(
