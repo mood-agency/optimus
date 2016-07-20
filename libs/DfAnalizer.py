@@ -148,6 +148,255 @@ class DataFrameAnalizer():
         self.__rowNumber = 0
         self.__pathFile = pathFile
 
+    def __createDict(self, keys, values):
+        """This functions is a helper to build dictionaries. The first argument must be a list of keys but it
+        can be a string also (in this case the string will be packaged into a list. The keys provided
+        will be the dictionary keys. The second argument represents the values of each key. values argument can
+        be a list or another dictionary."""
+
+        dicc = {}
+        # Assert if keys is a string, if not, the string is placed it inside a list
+        if isinstance(keys, str) == True: keys = [keys]
+        # If values is not a list, place it inside a list also
+        if not type(values) == type([]): values = [values]
+        # Making dictionary
+        for index in range(len(keys)): dicc[keys[index]] = values[index]
+        # Return dictionary built
+        return dicc
+
+    def __verification(self, tempDf, columnName):
+             # Function for determine if register value is float or int or string:
+            def dataType(value):
+                if isinstance(value, int): # Check if value is integer
+                    return 'integer'
+                elif isinstance(value, float):
+                    return 'float'
+                elif isinstance(value, str):
+                    try: # Try to parse (to int) register value
+                        int(value)
+                        # Add 1 if suceed:
+                        return 'integer'
+                    except ValueError:
+                        try:
+                            # Try to parse (to float) register value
+                            float(value)
+                            # Add 1 if suceed:
+                            return 'float'
+                        except ValueError:
+                            # Then, it is a string
+                            return 'string'
+                else:
+                    return 'null'
+
+            func = udf(dataType, StringType())
+            tempDf = tempDf.withColumn('types', func(col(columnName)))
+
+            types = tempDf.groupBy('types').count()
+
+            typeslabels = ['integer', 'float', 'string', 'null']
+
+
+            numbers = {}
+            for row in types.collect(): numbers[row[0]] = row[1]
+
+            # completing values of rest types:
+            for label in typeslabels:
+                if not label in numbers:
+                    numbers[label] = 0
+
+            numberEmptyStrs = tempDf.where(col(columnName) == '').count()
+            numbers['string'] = numbers['string'] - numberEmptyStrs
+
+            # List of returning values:
+            values = [tempDf, numbers['null'], numberEmptyStrs, numbers['string'], numbers['integer'], numbers['float']]
+            return values
+
+        # Analize of each column:
+    def __analize(self, dfColAnalizer, column, rowNumber,plots, printType, valuesBar, numBars, typesDict):
+        sampleTableDict = {'string': 0., 'integer': 0, 'float': 0}
+        # Calling verification ruotine to obtain datatype's counts
+        #returns: [dataframeColumn, number of nulls, number of strings, number of integers, number of floats]
+        dtypeNumbers = self.__verification(dfColAnalizer.select(column), column)
+
+        def validColCheck(f):
+            """This functions analyze if column has more than two different data types
+            and return True if the column analyzed is found to be with different datatypes"""
+            # Verifying if there is a dummy column:
+            dummy = any(x==1 for x in f[0:2]) and all(x==0 for x in f[2:])
+
+            # Verifying if there is a column with different datatypes:
+            # Sum the first and the second number:
+            sumFirstAndSecond = lambda lista: [lista[x] + lista[0] if x == 1 else lista[x] for x in range(len(lista))][1:]
+
+            # Check if the column has different datatypes:
+            differentTypes =  sum([1 if x == 0 else 0 for x in sumFirstAndSecond(f[1:])]) < 2
+
+            return dummy or differentTypes
+
+        # Calculate percentages of datatypes:
+        percentages = [(dtypeNumber / float(rowNumber)) * 100 for dtypeNumber in dtypeNumbers[1:]]
+
+        if (validColCheck(dtypeNumbers[1:])):
+            invalidCols = column
+        else:
+            invalidCols = False
+
+        # Instance of columnTables to display results:
+        typeCol = dfColAnalizer.select(column).dtypes[0][1]
+
+        tempObj = ColumnTables(column, typeCol,  dtypeNumbers, percentages)
+        display(tempObj)
+
+        if typeCol != 'string':
+            print("Min value: ", dfColAnalizer.select(cmin(col(column))).first()[0])
+            print("Max value: ", dfColAnalizer.select(cmax(col(column))).first()[0])
+
+        # Plot bar stack:
+        #if plots==True: self.__bar_stack_type(percentages, column)
+
+        if printType == True:
+            typeslabels = ['integer', 'float', 'string']
+            listOfEachtype = [dtypeNumbers[0].where(col('types') == tipo).where(col(column) != '') \
+                              .drop('types').select(column).distinct() \
+                              .limit(20).map(lambda x: x[column]).collect() for tipo in typeslabels]
+            display(DataTypeTable(listOfEachtype))
+            sampleTableDict = self.__createDict(typeslabels, listOfEachtype)
+
+        # Obtaining number of strings and numbers to decide what type of histogram (numerical
+        # or categorical is needed)
+        stringQty = dtypeNumbers[3]
+        numberQty = np.sum(dtypeNumbers[4:])
+
+        # Plotting histograms:
+        # If number of strings is greater than (number of integers + number of floats)
+        if (stringQty > numberQty) and (plots==True):
+            histPlot = self.plotHist(
+                            dfOneCol=dfColAnalizer.select(column),
+                            typeHist='categorical',
+                            numBars=numBars,
+                            valuesBar=valuesBar)
+            plt.show()
+
+
+        elif (stringQty < numberQty) and (plots==True):
+            # Create the general blog and the "subplots" i.e. the bars
+            f = plt.figure(figsize=(6,3))
+
+            # This function, place values of frequency in histogram bars.
+            histPlot = self.plotHist(dfColAnalizer.select(column),
+                          typeHist='numerical',
+                          numBars=numBars,
+                          valuesBar=valuesBar)
+
+        else:
+            print ("No valid data to print histogram or plots argument set to False")
+
+            histPlot = {"data":[{"count": 0, "value": "none"}]}
+
+
+        numbers = list(dtypeNumbers[1:])
+        valid_values = self.__createDict(['total', 'string', 'integer', 'float'],
+                                       [int(np.sum(dtypeNumbers[-3:])),
+                                        numbers[-3],
+                                        numbers[-2],
+                                        numbers[-1]]
+                                       )
+
+
+        missing_values = self.__createDict(
+                        ['total', 'empty', 'null'],
+                        [int(np.sum(numbers[0:2])), numbers[1], numbers[0]
+                        ])
+
+
+        #returns: [number of nulls, number of strings, number of integers, number of floats]
+        summaryDict = self.__createDict(
+                        ["name", "type", "total", "valid_values", "missing_values"],
+                        [column, typesDict[typeCol], rowNumber, valid_values, missing_values
+                        ])
+
+        columnDict = self.__createDict(
+                        ["summary", "graph", "sample"],
+                        [summaryDict, histPlot, sampleTableDict]
+                        )
+
+
+        return invalidCols, percentages, numbers, columnDict
+
+        # This function, place values of frequency in histogram bars.
+    def __valuesOnBar(self, plotFig):
+        rects = plotFig.patches
+        for rect in rects:
+            # Getting height of bars:
+            height = rect.get_height()
+            # Plotting texts on bars:
+            plt.text(rect.get_x() + rect.get_width() / 2.,
+                     1.001 * height, "%.2e" % int(height),
+                     va='bottom', rotation=90)
+
+    def __plotNumHist(self, histDict, column, valuesBar):
+        values = [list(lista) for lista in list(zip( * [(dic['value'], dic['cont']) for dic in histDict]))]
+        index = np.arange(len(values[0]))
+
+        bins = values[0]
+
+        if len(bins) == 1:
+            width = bins[0] * 0.3
+            bins[0] = bins[0] - width
+        else:
+            width = min(abs(np.diff(bins))) * 0.15
+
+        # Plotting histogram:
+        plotFig = plt.bar(np.array(bins) - width, values[1] , width=width)
+
+        if valuesBar == True: self.__valuesOnBar(plotFig)
+
+        if len(bins) == 1:
+            plt.xticks(np.round(bins))
+            plt.xlim([0, bins[0] + 1])
+        else:
+            plt.xticks(np.round(bins))
+
+        plt.ylim([0, np.max(values[1]) * 1.25])
+        # Plot Title:
+        plt.title(column)
+        # Limits Y axes
+        plt.show()
+
+    def __plotCatHist(self, histDict, column, valuesBar):
+        # Extracting values from dictionary
+        k = list(filter(lambda k: k != 'cont', histDict[0].keys()))[0]
+
+        values = [list(lista) for lista in list(zip( * [(dic[k], dic['cont']) for dic in histDict]))]
+        index = np.arange(len(values[0]))
+
+        # Plot settings
+        fig, ax = plt.subplots()
+        # We need to draw the canvas, otherwise the labels won't be positioned and
+        # won't have values yet.
+        fig.canvas.draw()
+        # Setting values of xticks
+        ax.set_xticks(index)
+        # Setting labels to the ticks
+        ax.set_xticklabels(values[0], rotation=90)
+
+        # Plot of bars:
+        width = 0.5
+        bins = index - width / 2
+        plotFig = plt.bar(bins, values[1], width=width)
+
+
+        # If user want to see values of frequencies over each bar
+        if valuesBar == True: self.__valuesOnBar(plotFig)
+
+        # Plot Title:
+        plt.title(column)
+        # Limits Y axes
+        plt.ylim([0, np.max(values[1]) * 1.3])
+        plt.xlim([-1, index[-1] + 1])
+        plt.show()
+
+
     def setDataframe(self, df):
         """This function set a dataframe into the class for subsequent actions.
         """
@@ -258,256 +507,8 @@ class DataFrameAnalizer():
         jsonCols = self.__createDict(["summary", "columns"], [self.generalDescription(), jsonCols])
         return invalidCols, jsonCols
 
-    def __createDict(self, keys, values):
-        """This functions is a helper to build dictionaries. The first argument must be a list of keys but it
-        can be a string also (in this case the string will be packaged into a list. The keys provided
-        will be the dictionary keys. The second argument represents the values of each key. values argument can
-        be a list or another dictionary."""
-
-        dicc = {}
-        # Assert if keys is a string, if not, the string is placed it inside a list
-        if isinstance(keys, str) == True: keys = [keys]
-        # If values is not a list, place it inside a list also
-        if not type(values) == type([]): values = [values]
-        # Making dictionary
-        for index in range(len(keys)): dicc[keys[index]] = values[index]
-        # Return dictionary built
-        return dicc
 
 
-        # Analize of each column:
-    def __analize(self, dfColAnalizer, column, rowNumber,plots, printType, valuesBar, numBars, typesDict):
-        sampleTableDict = {'string': 0., 'integer': 0, 'float': 0}
-        # Calling verification ruotine to obtain datatype's counts
-        #returns: [dataframeColumn, number of nulls, number of strings, number of integers, number of floats]
-        dtypeNumbers = self.__verification(dfColAnalizer.select(column), column)
-
-        def validColCheck(f):
-            """This functions analyze if column has more than two different data types
-            and return True if the column analyzed is found to be with different datatypes"""
-            # Verifying if there is a dummy column:
-            dummy = any(x==1 for x in f[0:2]) and all(x==0 for x in f[2:])
-
-            # Verifying if there is a column with different datatypes:
-            # Sum the first and the second number:
-            sumFirstAndSecond = lambda lista: [lista[x] + lista[0] if x == 1 else lista[x] for x in range(len(lista))][1:]
-
-            # Check if the column has different datatypes:
-            differentTypes =  sum([1 if x == 0 else 0 for x in sumFirstAndSecond(f[1:])]) < 2
-
-            return dummy or differentTypes
-
-        # Calculate percentages of datatypes:
-        percentages = [(dtypeNumber / float(rowNumber)) * 100 for dtypeNumber in dtypeNumbers[1:]]
-
-        if (validColCheck(dtypeNumbers[1:])):
-            invalidCols = column
-        else:
-            invalidCols = False
-
-        # Instance of columnTables to display results:
-        typeCol = dfColAnalizer.select(column).dtypes[0][1]
-
-        tempObj = ColumnTables(column, typeCol,  dtypeNumbers, percentages)
-        display(tempObj)
-
-        if typeCol != 'string':
-            print("Min value: ", dfColAnalizer.select(cmin(col(column))).first()[0])
-            print("Max value: ", dfColAnalizer.select(cmax(col(column))).first()[0])
-
-        # Plot bar stack:
-        #if plots==True: self.__bar_stack_type(percentages, column)
-
-        if printType == True:
-            typeslabels = ['integer', 'float', 'string']
-            listOfEachtype = [dtypeNumbers[0].where(col('types') == tipo) \
-                              .drop('types').select(column).distinct() \
-                              .limit(20).map(lambda x: x[column]).collect() for tipo in typeslabels]
-            display(DataTypeTable(listOfEachtype))
-            sampleTableDict = self.__createDict(typeslabels, listOfEachtype)
-
-        # Obtaining number of strings and numbers to decide what type of histogram (numerical
-        # or categorical is needed)
-        stringQty = dtypeNumbers[3]
-        numberQty = np.sum(dtypeNumbers[4:])
-
-        # Plotting histograms:
-        # If number of strings is greater than (number of integers + number of floats)
-        if (stringQty > numberQty) and (plots==True):
-            histPlot = self.plotHist(
-                            dfOneCol=dfColAnalizer.select(column),
-                            typeHist='categorical',
-                            numBars=numBars,
-                            valuesBar=valuesBar)
-            plt.show()
-
-
-        elif (stringQty < numberQty) and (plots==True):
-            # Create the general blog and the "subplots" i.e. the bars
-            f = plt.figure(figsize=(6,3))
-
-            # This function, place values of frequency in histogram bars.
-            histPlot = self.plotHist(dfColAnalizer.select(column),
-                          typeHist='numerical',
-                          numBars=numBars,
-                          valuesBar=valuesBar)
-
-        else:
-            print ("No valid data to print histogram or plots argument set to False")
-
-            histPlot = {"data":[{"count": 0, "value": "none"}]}
-
-
-        numbers = list(dtypeNumbers[1:])
-        valid_values = self.__createDict(['total', 'string', 'integer', 'float'],
-                                       [int(np.sum(dtypeNumbers[-3:])),
-                                        numbers[-3],
-                                        numbers[-2],
-                                        numbers[-1]]
-                                       )
-
-
-        missing_values = self.__createDict(
-                        ['total', 'empty', 'null'],
-                        [int(np.sum(numbers[0:2])), numbers[1], numbers[0]
-                        ])
-
-
-        #returns: [number of nulls, number of strings, number of integers, number of floats]
-        summaryDict = self.__createDict(
-                        ["name", "type", "total", "valid_values", "missing_values"],
-                        [column, typesDict[typeCol], rowNumber, valid_values, missing_values
-                        ])
-
-        columnDict = self.__createDict(
-                        ["summary", "graph", "sample"],
-                        [summaryDict, histPlot, sampleTableDict]
-                        )
-
-
-        return invalidCols, percentages, numbers, columnDict
-
-    def __verification(self, tempDf, columnName):
-             # Function for determine if register value is float or int or string:
-            def dataType(value):
-                if isinstance(value, int): # Check if value is integer
-                    return 'integer'
-                elif isinstance(value, float):
-                    return 'float'
-                elif isinstance(value, str):
-                    try: # Try to parse (to int) register value
-                        int(value)
-                        # Add 1 if suceed:
-                        return 'integer'
-                    except ValueError:
-                        try:
-                            # Try to parse (to float) register value
-                            float(value)
-                            # Add 1 if suceed:
-                            return 'float'
-                        except ValueError:
-                            # Then, it is a string
-                            return 'string'
-                else:
-                    return 'null'
-
-            func = udf(dataType, StringType())
-            tempDf = tempDf.withColumn('types', func(col(columnName)))
-
-            types = tempDf.groupBy('types').count()
-
-            typeslabels = ['integer', 'float', 'string', 'null']
-
-
-            numbers = {}
-            for row in types.collect(): numbers[row[0]] = row[1]
-
-            # completing values of rest types:
-            for label in typeslabels:
-                if not label in numbers:
-                    numbers[label] = 0
-
-            numberEmptyStrs = tempDf.where(col(columnName) == '').count()
-            numbers['string'] = numbers['string'] - numberEmptyStrs
-
-            # List of returning values:
-            values = [tempDf, numbers['null'], numberEmptyStrs, numbers['string'], numbers['integer'], numbers['float']]
-            return values
-
-    def __bar_stack_type(self, data, name):
-            """
-            This function builds the bar stack graph to show the datatypes proportions for a column:
-            Inputs:
-            data: A list that contains the diferents proportions of datatypes.
-            name: Name of the column in the bar stack.
-            Outputs:
-            None
-
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Example:
-
-            bar_stack_type([10, 20, 10, 20, 40], 'Example')
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-            """
-
-            # Creates the general blog and the "subplots" i.e. the bars
-            plt.figure(figsize = (6,3))
-            # Set the bar width
-            bar_width = 0.7
-            # positions of the left bar-boundaries
-            bar_l = 1
-            # positions of the x-axis ticks (center of the bars as bar labels)
-            tick_pos = bar_l + (bar_width / 2)
-
-            labels = ['None', 'Empty str', 'Strings', 'Integers', 'Floats']
-            colors = ['r', 'b', 'y', 'g','m','c']
-
-            for x in range(len(data)):
-                if x != 0:
-                    # Create a bar plot, in position bar_1
-                    plt.bar(bar_l,
-                            # using the mid_score data
-                            data[x],
-                            # set the width
-                            width = bar_width,
-                            # with pre_score on the bottom
-                            bottom = np.sum(data[: x]),
-                            # with the label mid score
-                            label = labels[x],
-                            # with alpha 0.5
-                            alpha = 0.5,
-                            # with color
-                            color = colors[x])
-                else:
-                    # Create a bar plot:
-                    plt.bar(bar_l, data[x],
-                            # set the width
-                            width = bar_width,
-                            # with the label pre score
-                            label = labels[x],
-                            # with alpha 0.5
-                            alpha = 0.5,
-                            # with color
-                            color = colors[x])
-
-            # Change the plot style:
-            plt.style.use('ggplot')
-            # Set the x ticks with the column name:
-            plt.xticks([tick_pos], "")
-            # Set the label and legends
-            plt.xlabel(name)
-            plt.ylabel('Percentage (%)')
-            # Set the legend:
-            plt.legend(loc='upper left')
-            # Set title:
-            plt.title('')
-            # Set a buffer around the edge
-            plt.xlim([tick_pos - bar_width * 2, tick_pos + bar_width * 2])
-            # Set the y axis to 150:
-            plt.ylim(0, 100)
-            plt.show()
 
     def plotHist(self, dfOneCol, typeHist, numBars=20,  valuesBar=True):
         """
@@ -567,78 +568,6 @@ class DataFrameAnalizer():
 
         return histDict
 
-        # This function, place values of frequency in histogram bars.
-    def __valuesOnBar(self, plotFig):
-        rects = plotFig.patches
-        for rect in rects:
-            # Getting height of bars:
-            height = rect.get_height()
-            # Plotting texts on bars:
-            plt.text(rect.get_x() + rect.get_width() / 2.,
-                     1.001 * height, "%.2e" % int(height),
-                     va='bottom', rotation=90)
-
-    def __plotNumHist(self, histDict, column, valuesBar):
-        values = [list(lista) for lista in list(zip( * [(dic['value'], dic['cont']) for dic in histDict]))]
-        index = np.arange(len(values[0]))
-
-        bins = values[0]
-
-        if len(bins) == 1:
-            width = bins[0] * 0.3
-            bins[0] = bins[0] - width
-        else:
-            width = min(abs(np.diff(bins))) * 0.15
-
-        # Plotting histogram:
-        plotFig = plt.bar(np.array(bins) - width, values[1] , width=width)
-
-        if valuesBar == True: self.__valuesOnBar(plotFig)
-
-        if len(bins) == 1:
-            plt.xticks(np.round(bins))
-            plt.xlim([0, bins[0] + 1])
-        else:
-            plt.xticks(np.round(bins))
-
-        plt.ylim([0, np.max(values[1]) * 1.25])
-        # Plot Title:
-        plt.title(column)
-        # Limits Y axes
-        plt.show()
-
-    def __plotCatHist(self, histDict, column, valuesBar):
-        # Extracting values from dictionary
-        k = list(filter(lambda k: k != 'cont', histDict[0].keys()))[0]
-
-        values = [list(lista) for lista in list(zip( * [(dic[k], dic['cont']) for dic in histDict]))]
-        index = np.arange(len(values[0]))
-
-        # Plot settings
-        fig, ax = plt.subplots()
-        # We need to draw the canvas, otherwise the labels won't be positioned and
-        # won't have values yet.
-        fig.canvas.draw()
-        # Setting values of xticks
-        ax.set_xticks(index)
-        # Setting labels to the ticks
-        ax.set_xticklabels(values[0], rotation=90)
-
-        # Plot of bars:
-        width = 0.5
-        bins = index - width / 2
-        plotFig = plt.bar(bins, values[1], width=width)
-
-
-        # If user want to see values of frequencies over each bar
-        if valuesBar == True: self.__valuesOnBar(plotFig)
-
-        # Plot Title:
-        plt.title(column)
-        # Limits Y axes
-        plt.ylim([0, np.max(values[1]) * 1.3])
-        plt.xlim([-1, index[-1] + 1])
-        plt.show()
 
 
     def getNumericalHist(self, dfOneCol, numBars):
@@ -742,6 +671,24 @@ class DataFrameAnalizer():
             histDict.append(self.__createDict(['value', 'cont'], [row[0], row[1]]))
 
         return histDict
+
+    def uniqueValuesCol(self, column):
+        """This function counts the number of values that are unique and also the total number of values.
+        Then, returns the values obtained.
+
+        :param  column      Name of column dataFrame, this argument must be string type.
+
+        :return         dictionary of values counted, as an example:
+                        {'unique': 10, 'total': 15}
+        """
+
+        assert column, "Error, column name must be string type."
+
+        total = self.__df.select(column).count()
+        distincts = self.__df.select(column).distinct().count()
+
+        return {'total': total, 'unique': distincts}
+
 
     def writeJson(self, jsonCols, pathToJsonFile):
 

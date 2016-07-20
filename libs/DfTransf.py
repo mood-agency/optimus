@@ -59,8 +59,9 @@ class DataFrameTransformer():
     def __addTransformation(self):
         self.__numberOfTransformations += 1
 
-        if (self.__numberOfTransformations > 10):
+        if (self.__numberOfTransformations > 5):
             self.checkPoint()
+            self.__numberOfTransformations = 0
 
     def setDataframe(self, df):
         """This function set a dataframe into the class for subsequent actions.
@@ -107,9 +108,11 @@ class DataFrameTransformer():
 
         # Checkpointing of dataFrame. One question can be thought. Why not use cache() or persist() instead of
         # checkpoint. This is because cache() and persis() apparently do not break the lineage of operations,
+        print ("Saving changes at disk by checkpoint...")
         self.__df.rdd.checkpoint()
         self.__df.rdd.count()
         self.__df = self.__sqlContext.createDataFrame(self.__df.rdd, self.__df.schema)
+        print ("Done.")
 
     def trimCol(self, columns):
         """This methods cut left and right extra spaces in column strings provided by user.
