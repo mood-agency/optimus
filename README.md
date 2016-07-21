@@ -1,26 +1,29 @@
-## Optimus
+## DataFrameTransformer
 
-DFTransformer is a powerful and flexible library to make dataFrame
-transformations in Apache pySpark.
+DataFrameTransformer is a powerful and flexible library to make dataFrame
+transformations in Apache Spark (pySpark).
 
 This library contains several transformation functions based in
 spark original modules but with some features added to facilitate its use.
 
-Since functions in this library are mounted in the Spark SQL Context, it offers not only the high performance of original Spark SQL functions but an easier usability.  
+Since functions in this library are mounted in the Spark SQL Context,
+it offers not only the high performance of original Spark SQL functions
+but an easier usability.  
 
 ## Requirements
 * Apache Spark 1.6
 * Python 3.5
 
 ## Installation:
-1 - Download Transformer.py and paste it in the project folder
-2 - When starting pySpark in terminal, write the following line:
+1 - Download `libs` folder and place the content inside your working folder.
 
-`$ pyspark --py-files DFTransf.py`
+2 - When starting pySpark in terminal, write the following line:
+`$ pyspark --packages com.databricks:spark-csv_2.11:1.3.0 --py-files DfAnalizer.py,DfTransf.py,utilities.py`
 
 
 ## DFTransformer class
 * DFTransformer(dataFrame)
+
 ### Methods
 * DFTransformer.trimCol(columns)
 * DFTransformer.dropCol(columns)
@@ -29,6 +32,7 @@ Since functions in this library are mounted in the Spark SQL Context, it offers 
 * DFTransformer.deleteRow(func)
 * DFTransformer.keepCol(columns)
 * DFTransformer.setCol(columns, func, dataType)
+
 * DFTransformer.clearAccents(columns)
 * DFTransformer.removeSpecialChars(columns)
 * DFTransformer.renameCol(column, newName)
@@ -47,6 +51,7 @@ DFTransformer class receives a dataFrame as an argument. This class has all
 methods listed aboved.
 
 Note: Every possible transformation make changes over this dataFrame and overwrites it.
+
 
 The following code shows how to instanciate the class to transform a dataFrame:
 
@@ -87,6 +92,9 @@ transformer.df.show()
 ```
 
 ## Methods
+
+[Link to Header](#description)
+
 #### * Transformer.trimCol(columns)
 
 This methods cut left and right extra spaces in column strings provided by user.
