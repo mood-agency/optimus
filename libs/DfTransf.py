@@ -604,19 +604,19 @@ class DataFrameTransformer():
         """
         # Asserting if position is string or list:
 
-        assert type(listToAssign) == type([]), "Error: position argument must be a list"
+        assert type(listToAssign) == type([]), "Error: listToAssign argument must be a list"
 
         # Asserting parameters are not empty strings:
         assert (
             (colId != '') and (col1 != '') and (newColFeature != '')), "Error: Input parameters can't be empty strings"
 
-        # Check if col1 argument a string datatype:
+        # Check if col1 argument is string datatype:
         self.__assertTypeStr(col1, "col1")
 
-        # Check if newColFeature argument a string datatype:
+        # Check if newColFeature argument is a string datatype:
         self.__assertTypeStr(newColFeature, "newColFeature")
 
-        # Check if colId argument a string datatype:
+        # Check if colId argument is a string datatype:
         self.__assertTypeStr(colId, "colId")
 
         # Check if colId to be process are in dataframe

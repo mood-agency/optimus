@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Importing sql functions
-from pyspark.sql.functions import udf, when,  col, min as cmin, max as cmax
+from pyspark.sql.functions import udf, when, col, min as cmin, max as cmax
 from pyspark.sql.types import StringType, DoubleType
 # Importing plotting libraries
 import matplotlib.pyplot as plt
@@ -14,6 +14,8 @@ from IPython.display import display, HTML
 import time
 # Importing dumps
 from json import dumps
+
+plt.style.use('ggplot')
 
 class ColumnTables():
     def __init__(self, colName, dataTypeInferred, qtys, percents):
@@ -29,12 +31,12 @@ class ColumnTables():
 
         # Adding a row:
         html.append("<tr>")
-        html.append("<td colspan=3 >{0}</td>".format("<b> Column name: </b>" + self.colName ))
+        html.append("<td colspan=3 >{0}</td>".format("<b> Column name: </b>" + self.colName))
         html.append("</tr>")
 
         # Adding a row:
         html.append("<tr>")
-        html.append("<td colspan=3 >{0}</td>".format("<b> Column datatype: </b>" + self.dataTypeInferred ))
+        html.append("<td colspan=3 >{0}</td>".format("<b> Column datatype: </b>" + self.dataTypeInferred))
         html.append("</tr>")
 
         # Adding a row:
@@ -54,10 +56,10 @@ class ColumnTables():
         html.append("</table>")
         return ''.join(html)
 
+
 # Input data:
 class GeneralDescripTable():
     def __init__(self, fileName, columnNumber, rowNumber):
-
         self.labels = ['File Name', "Columns", "Rows"]
         self.dat = [fileName, columnNumber, rowNumber]
 
@@ -83,12 +85,13 @@ class GeneralDescripTable():
             html.append("</tr>")
 
         return ''.join(html)
-        #self.body =  ''.join(html)
+        # self.body =  ''.join(html)
+
 
 class DataTypeTable():
     def __init__(self, lista):
         self.lista = lista
-        #self.tuples = tuples
+        # self.tuples = tuples
         self.html = ""
 
     def colTable(self, lista):
@@ -117,7 +120,7 @@ class DataTypeTable():
         # First row of table:
         self.html.append("<tr>")
         for x in range(len(headers)):
-            if ver[x]: # If list is not empty, print its head
+            if ver[x]:  # If list is not empty, print its head
                 self.html.append("<th style='text-align: center'>")
                 self.html.append(str(headers[x]))
                 self.html.append("</th>")
@@ -140,13 +143,16 @@ class DataTypeTable():
         self.html.append("</table>")
         return ''.join(self.html)
 
+
 # This class makes an analisis of dataframe datatypes and its different general features.
 class DataFrameAnalizer():
-    def __init__(self, df, pathFile):
+    def __init__(self, df, pathFile, pu=0.1, seed=13):
         # Dataframe
-        self.__df = df
         self.__rowNumber = 0
         self.__pathFile = pathFile
+        self.__currentlyObserved = 0  # 0 => whole 1 => partition
+        self.__df = df
+        self.__sample = df.sample(False, pu, seed)
 
     def __createDict(self, keys, values):
         """This functions is a helper to build dictionaries. The first argument must be a list of keys but it
@@ -165,71 +171,72 @@ class DataFrameAnalizer():
         return dicc
 
     def __verification(self, tempDf, columnName):
-             # Function for determine if register value is float or int or string:
-            def dataType(value):
-                if isinstance(value, int): # Check if value is integer
+        # Function for determine if register value is float or int or string:
+        def dataType(value):
+            if isinstance(value, int):  # Check if value is integer
+                return 'integer'
+            elif isinstance(value, float):
+                return 'float'
+            elif isinstance(value, str):
+                try:  # Try to parse (to int) register value
+                    int(value)
+                    # Add 1 if suceed:
                     return 'integer'
-                elif isinstance(value, float):
-                    return 'float'
-                elif isinstance(value, str):
-                    try: # Try to parse (to int) register value
-                        int(value)
+                except ValueError:
+                    try:
+                        # Try to parse (to float) register value
+                        float(value)
                         # Add 1 if suceed:
-                        return 'integer'
+                        return 'float'
                     except ValueError:
-                        try:
-                            # Try to parse (to float) register value
-                            float(value)
-                            # Add 1 if suceed:
-                            return 'float'
-                        except ValueError:
-                            # Then, it is a string
-                            return 'string'
-                else:
-                    return 'null'
+                        # Then, it is a string
+                        return 'string'
+            else:
+                return 'null'
 
-            func = udf(dataType, StringType())
-            tempDf = tempDf.withColumn('types', func(col(columnName)))
+        func = udf(dataType, StringType())
+        tempDf = tempDf.withColumn('types', func(col(columnName)))
 
-            types = tempDf.groupBy('types').count()
+        types = tempDf.groupBy('types').count()
 
-            typeslabels = ['integer', 'float', 'string', 'null']
+        typeslabels = ['integer', 'float', 'string', 'null']
 
+        numbers = {}
+        for row in types.collect(): numbers[row[0]] = row[1]
 
-            numbers = {}
-            for row in types.collect(): numbers[row[0]] = row[1]
+        # completing values of rest types:
+        for label in typeslabels:
+            if not label in numbers:
+                numbers[label] = 0
 
-            # completing values of rest types:
-            for label in typeslabels:
-                if not label in numbers:
-                    numbers[label] = 0
+        numberEmptyStrs = tempDf.where(col(columnName) == '').count()
+        numbers['string'] = numbers['string'] - numberEmptyStrs
 
-            numberEmptyStrs = tempDf.where(col(columnName) == '').count()
-            numbers['string'] = numbers['string'] - numberEmptyStrs
-
-            # List of returning values:
-            values = [tempDf, numbers['null'], numberEmptyStrs, numbers['string'], numbers['integer'], numbers['float']]
-            return values
+        # List of returning values:
+        values = [tempDf, numbers['null'], numberEmptyStrs, numbers['string'], numbers['integer'], numbers['float']]
+        return values
 
         # Analize of each column:
-    def __analize(self, dfColAnalizer, column, rowNumber,plots, printType, valuesBar, numBars, typesDict):
+
+    def __analize(self, dfColAnalizer, column, rowNumber, plots, printType, valuesBar, numBars, typesDict):
         sampleTableDict = {'string': 0., 'integer': 0, 'float': 0}
         # Calling verification ruotine to obtain datatype's counts
-        #returns: [dataframeColumn, number of nulls, number of strings, number of integers, number of floats]
+        # returns: [dataframeColumn, number of nulls, number of strings, number of integers, number of floats]
         dtypeNumbers = self.__verification(dfColAnalizer.select(column), column)
 
         def validColCheck(f):
             """This functions analyze if column has more than two different data types
             and return True if the column analyzed is found to be with different datatypes"""
             # Verifying if there is a dummy column:
-            dummy = any(x==1 for x in f[0:2]) and all(x==0 for x in f[2:])
+            dummy = any(x == 1 for x in f[0:2]) and all(x == 0 for x in f[2:])
 
             # Verifying if there is a column with different datatypes:
             # Sum the first and the second number:
-            sumFirstAndSecond = lambda lista: [lista[x] + lista[0] if x == 1 else lista[x] for x in range(len(lista))][1:]
+            sumFirstAndSecond = lambda lista: [lista[x] + lista[0] if x == 1 else lista[x] for x in range(len(lista))][
+                                              1:]
 
             # Check if the column has different datatypes:
-            differentTypes =  sum([1 if x == 0 else 0 for x in sumFirstAndSecond(f[1:])]) < 2
+            differentTypes = sum([1 if x == 0 else 0 for x in sumFirstAndSecond(f[1:])]) < 2
 
             return dummy or differentTypes
 
@@ -244,7 +251,7 @@ class DataFrameAnalizer():
         # Instance of columnTables to display results:
         typeCol = dfColAnalizer.select(column).dtypes[0][1]
 
-        tempObj = ColumnTables(column, typeCol,  dtypeNumbers, percentages)
+        tempObj = ColumnTables(column, typeCol, dtypeNumbers, percentages)
         display(tempObj)
 
         if typeCol != 'string':
@@ -252,13 +259,13 @@ class DataFrameAnalizer():
             print("Max value: ", dfColAnalizer.select(cmax(col(column))).first()[0])
 
         # Plot bar stack:
-        #if plots==True: self.__bar_stack_type(percentages, column)
+        # if plots==True: self.__bar_stack_type(percentages, column)
 
         if printType == True:
             typeslabels = ['integer', 'float', 'string']
             listOfEachtype = [dtypeNumbers[0].where(col('types') == tipo).where(col(column) != '') \
-                              .drop('types').select(column).distinct() \
-                              .limit(20).map(lambda x: x[column]).collect() for tipo in typeslabels]
+                                  .drop('types').select(column).distinct() \
+                                  .limit(20).map(lambda x: x[column]).collect() for tipo in typeslabels]
             display(DataTypeTable(listOfEachtype))
             sampleTableDict = self.__createDict(typeslabels, listOfEachtype)
 
@@ -269,61 +276,58 @@ class DataFrameAnalizer():
 
         # Plotting histograms:
         # If number of strings is greater than (number of integers + number of floats)
-        if (stringQty > numberQty) and (plots==True):
+        if (stringQty > numberQty) and (plots == True):
             histPlot = self.plotHist(
-                            dfOneCol=dfColAnalizer.select(column),
-                            typeHist='categorical',
-                            numBars=numBars,
-                            valuesBar=valuesBar)
+                dfOneCol=dfColAnalizer.select(column),
+                typeHist='categorical',
+                numBars=numBars,
+                valuesBar=valuesBar)
             plt.show()
 
 
-        elif (stringQty < numberQty) and (plots==True):
+        elif (stringQty < numberQty) and (plots == True):
             # Create the general blog and the "subplots" i.e. the bars
-            f = plt.figure(figsize=(6,3))
+            f = plt.figure(figsize=(6, 3))
 
             # This function, place values of frequency in histogram bars.
             histPlot = self.plotHist(dfColAnalizer.select(column),
-                          typeHist='numerical',
-                          numBars=numBars,
-                          valuesBar=valuesBar)
+                                     typeHist='numerical',
+                                     numBars=numBars,
+                                     valuesBar=valuesBar)
 
         else:
-            print ("No valid data to print histogram or plots argument set to False")
+            print("No valid data to print histogram or plots argument set to False")
 
-            histPlot = {"data":[{"count": 0, "value": "none"}]}
-
+            histPlot = {"data": [{"count": 0, "value": "none"}]}
 
         numbers = list(dtypeNumbers[1:])
         valid_values = self.__createDict(['total', 'string', 'integer', 'float'],
-                                       [int(np.sum(dtypeNumbers[-3:])),
-                                        numbers[-3],
-                                        numbers[-2],
-                                        numbers[-1]]
-                                       )
-
+                                         [int(np.sum(dtypeNumbers[-3:])),
+                                          numbers[-3],
+                                          numbers[-2],
+                                          numbers[-1]]
+                                         )
 
         missing_values = self.__createDict(
-                        ['total', 'empty', 'null'],
-                        [int(np.sum(numbers[0:2])), numbers[1], numbers[0]
-                        ])
+            ['total', 'empty', 'null'],
+            [int(np.sum(numbers[0:2])), numbers[1], numbers[0]
+             ])
 
-
-        #returns: [number of nulls, number of strings, number of integers, number of floats]
+        # returns: [number of nulls, number of strings, number of integers, number of floats]
         summaryDict = self.__createDict(
-                        ["name", "type", "total", "valid_values", "missing_values"],
-                        [column, typesDict[typeCol], rowNumber, valid_values, missing_values
-                        ])
+            ["name", "type", "total", "valid_values", "missing_values"],
+            [column, typesDict[typeCol], rowNumber, valid_values, missing_values
+             ])
 
         columnDict = self.__createDict(
-                        ["summary", "graph", "sample"],
-                        [summaryDict, histPlot, sampleTableDict]
-                        )
-
+            ["summary", "graph", "sample"],
+            [summaryDict, histPlot, sampleTableDict]
+        )
 
         return invalidCols, percentages, numbers, columnDict
 
         # This function, place values of frequency in histogram bars.
+
     def __valuesOnBar(self, plotFig):
         rects = plotFig.patches
         for rect in rects:
@@ -335,7 +339,7 @@ class DataFrameAnalizer():
                      va='bottom', rotation=90)
 
     def __plotNumHist(self, histDict, column, valuesBar):
-        values = [list(lista) for lista in list(zip( * [(dic['value'], dic['cont']) for dic in histDict]))]
+        values = [list(lista) for lista in list(zip(*[(dic['value'], dic['cont']) for dic in histDict]))]
         index = np.arange(len(values[0]))
 
         bins = values[0]
@@ -347,7 +351,7 @@ class DataFrameAnalizer():
             width = min(abs(np.diff(bins))) * 0.15
 
         # Plotting histogram:
-        plotFig = plt.bar(np.array(bins) - width, values[1] , width=width)
+        plotFig = plt.bar(np.array(bins) - width, values[1], width=width)
 
         if valuesBar == True: self.__valuesOnBar(plotFig)
 
@@ -367,7 +371,7 @@ class DataFrameAnalizer():
         # Extracting values from dictionary
         k = list(filter(lambda k: k != 'cont', histDict[0].keys()))[0]
 
-        values = [list(lista) for lista in list(zip( * [(dic[k], dic['cont']) for dic in histDict]))]
+        values = [list(lista) for lista in list(zip(*[(dic[k], dic['cont']) for dic in histDict]))]
         index = np.arange(len(values[0]))
 
         # Plot settings
@@ -385,7 +389,6 @@ class DataFrameAnalizer():
         bins = index - width / 2
         plotFig = plt.bar(bins, values[1], width=width)
 
-
         # If user want to see values of frequencies over each bar
         if valuesBar == True: self.__valuesOnBar(plotFig)
 
@@ -396,11 +399,30 @@ class DataFrameAnalizer():
         plt.xlim([-1, index[-1] + 1])
         plt.show()
 
+    def __swapStatus(self):
+        self.__exchangeData()  # exchange data
+        self.__currentlyObserved = 0 if self.__currentlyObserved == 1 else 1
+
+    def __exchangeData(self):  # Swaps the data among DF and the Sample
+        if self.__currentlyObserved == 0:
+            self.__hiddenData = self.__df
+            self.__df = self.__sample
+
+        else:
+            self.__df = self.__hiddenData
+
+    def analyzeSample(self):
+        if self.__currentlyObserved == 0:
+            self.__swapStatus()
+
+    def analyzeCompleteData(self):
+        if self.__currentlyObserved == 1:
+            self.__swapStatus()
 
     def setDataframe(self, df):
         """This function set a dataframe into the class for subsequent actions.
         """
-        #assert isinstance(df, pyspark.sql.dataframe.DataFrame), "Error: df argument must a sql.dataframe type"
+        # assert isinstance(df, pyspark.sql.dataframe.DataFrame), "Error: df argument must a sql.dataframe type"
         self.__df = df
 
     def getDataframe(self):
@@ -423,8 +445,7 @@ class DataFrameAnalizer():
         dataTypes = len(set([x[1] for x in self.__df.dtypes]))
 
         return self.__createDict(["filename", "size", "columns", "rows", "datatypes"],
-                          [fileName, 500, colNumber, rowNumber, dataTypes])
-
+                                 [fileName, 500, colNumber, rowNumber, dataTypes])
 
     # Funtion to analize column datatypes, it also plot proportion datatypes and histograms:
     def columnAnalize(self, columnList, plots=True, valuesBar=True, printType=False, numBars=10):
@@ -442,7 +463,7 @@ class DataFrameAnalizer():
 
         """
         # Asserting data variable columnList:
-        assert type(columnList) == type([1,2]) or type(columnList) == type(' '), "Error: columnList has to be a list."
+        assert type(columnList) == type([1, 2]) or type(columnList) == type(' '), "Error: columnList has to be a list."
 
         # Asserting if valuesBar is type Boolean
         assert type(valuesBar) == type(True), "Error: valuesBar must be boolean, True or False."
@@ -460,20 +481,20 @@ class DataFrameAnalizer():
 
         # If columnList is a string, convert it in a list:
         if type(columnList) == type(' '):
-                if columnList == "*":
-                    columns = dfColAnalizer.columns
-                else:
-                    columns = [columnList]
+            if columnList == "*":
+                columns = dfColAnalizer.columns
+            else:
+                columns = [columnList]
 
         else:
             if len(columnList) > 1:
                 columns = columnList
 
-
         # Asserting if columns provided are in dataFrame:
-        assert all(col in dfColAnalizer.columns for col in columns), 'Error: Columns or column does not exist in the dataFrame'
+        assert all(
+            col in dfColAnalizer.columns for col in columns), 'Error: Columns or column does not exist in the dataFrame'
 
-        types = {"string": "ABC", "int": "#", "integer": "#","float": "##.#", "double": "##.#", "bigint": "#"}
+        types = {"string": "ABC", "int": "#", "integer": "#", "float": "##.#", "double": "##.#", "bigint": "#"}
 
         rowNumber = self.__df.count()
 
@@ -483,34 +504,29 @@ class DataFrameAnalizer():
         for column in columns:
             # Calling function analize:
             invCol, percentages, dtypeNumbers, d = self.__analize(
-                                                                    dfColAnalizer.select(column),
-                                                                    column,
-                                                                    rowNumber,
-                                                                    plots,
-                                                                    printType,
-                                                                    valuesBar=valuesBar,
-                                                                    numBars=numBars,
-                                                                    typesDict=types)
+                dfColAnalizer.select(column),
+                column,
+                rowNumber,
+                plots,
+                printType,
+                valuesBar=valuesBar,
+                numBars=numBars,
+                typesDict=types)
 
             # Save the invalid col if exists
             invalidCols.append(invCol)
 
             jsonCols.append(d)
 
-
         time2 = time.time()
-        print ("Total execution time: ", (time2 - time1))
+        print("Total execution time: ", (time2 - time1))
 
         invalidCols = list(filter(lambda x: x != False, invalidCols))
-
 
         jsonCols = self.__createDict(["summary", "columns"], [self.generalDescription(), jsonCols])
         return invalidCols, jsonCols
 
-
-
-
-    def plotHist(self, dfOneCol, typeHist, numBars=20,  valuesBar=True):
+    def plotHist(self, dfOneCol, typeHist, numBars=20, valuesBar=True):
         """
         This function builds the histogram (bins) of an categorical column dataframe.
 
@@ -530,7 +546,8 @@ class DataFrameAnalizer():
         """
 
         assert isinstance(typeHist, str), "Error, typeHist argument provided must be a string."
-        assert typeHist == ('categorical') or (typeHist == 'numerical'), "Error, typeHist only can be 'categorical' or 'numerical'."
+        assert typeHist == ('categorical') or (
+            typeHist == 'numerical'), "Error, typeHist only can be 'categorical' or 'numerical'."
 
         # Getting column of dataframe provided
         column = dfOneCol.columns[0]
@@ -544,7 +561,7 @@ class DataFrameAnalizer():
             histDict = self.getNumericalHist(dfOneCol, numBars)
             self.__plotNumHist(histDict, column, valuesBar=True)
 
-        return {"data":histDict}
+        return {"data": histDict}
 
     def getCategoricalHist(self, dfOneCol, numBars):
         """This function analyzes a dataframe of a single column (only string type columns) and
@@ -557,9 +574,9 @@ class DataFrameAnalizer():
         column = dfOneCol.columns[0]
 
         dfKeys = dfOneCol.select(column) \
-                .groupBy(column).count() \
-                .sort('count', ascending=False) \
-                .limit(numBars)
+            .groupBy(column).count() \
+            .sort('count', ascending=False) \
+            .limit(numBars)
 
         # Extracting information dataframe into a python dictionary:
         histDict = []
@@ -567,8 +584,6 @@ class DataFrameAnalizer():
             histDict.append(self.__createDict(['value', 'cont'], [row[0], row[1]]))
 
         return histDict
-
-
 
     def getNumericalHist(self, dfOneCol, numBars):
         """This function analyzes a dataframe of a single column (only numerical columns) and
@@ -583,10 +598,10 @@ class DataFrameAnalizer():
 
         # If we obtain a null column:
         assert (type(tempDf.first()) != type(None)), \
-                "Error, Make sure column dataframe has numerical features. One of the first actions \
-            getNumericalHist function does is a convertion dataType from original datatype \
-            to float. If the column provided has only values that are \
-            not numbers parseables to float, it will flag this error."
+            "Error, Make sure column dataframe has numerical features. One of the first actions \
+        getNumericalHist function does is a convertion dataType from original datatype \
+        to float. If the column provided has only values that are \
+        not numbers parseables to float, it will flag this error."
 
         # Getting min and max values:
         minValue = tempDf.select(cmin(col(column))).first()[0]
@@ -597,9 +612,9 @@ class DataFrameAnalizer():
 
         # if stepsValue is different to zero, for example, there is only one number distinct in columnName
         if stepsValue == 0:
-            binsValues = [0, maxValue] # Only one bin is generated
+            binsValues = [0, maxValue]  # Only one bin is generated
         else:
-        # Intervals between min an max values of columnName are made based in number of numBars wanted
+            # Intervals between min an max values of columnName are made based in number of numBars wanted
             binsValues = np.arange(minValue, maxValue + stepsValue, stepsValue)
 
         # Valores unicos:
@@ -611,26 +626,25 @@ class DataFrameAnalizer():
 
         # This function search over columnName dataFrame to which interval belongs each cell
         # It returns the columnName dataFrame with an additional columnName which describes intervals of each columnName cell.
-        def generateExpr (columnName, listIntervals ):
-            if(len(listIntervals) == 1):
+        def generateExpr(columnName, listIntervals):
+            if (len(listIntervals) == 1):
                 return when(col(columnName).between(listIntervals[0][0], listIntervals[0][1]), 0).otherwise(None)
             else:
                 return (when((col(columnName) >= listIntervals[0][0]) & (col(columnName) < listIntervals[0][1]),
-                             len(listIntervals) -1)
-                 .otherwise(generateExpr(columnName, listIntervals[1:])))
+                             len(listIntervals) - 1)
+                        .otherwise(generateExpr(columnName, listIntervals[1:])))
 
-            # +--------+--------------------+
-            # |columns |Number of list pairs|
-            # +--------+--------------------+
-            # |       5|                   4|
-            # |       3|                   7|
-            # |       6|                   3|
-            # |       9|                   0|
-            # |       1|                   9|
-            # |       6|                   3|
-            # |       4|                   6|
-            # +--------+--------------------+
-
+                # +--------+--------------------+
+                # |columns |Number of list pairs|
+                # +--------+--------------------+
+                # |       5|                   4|
+                # |       3|                   7|
+                # |       6|                   3|
+                # |       9|                   0|
+                # |       1|                   9|
+                # |       6|                   3|
+                # |       4|                   6|
+                # +--------+--------------------+
 
         # Getting ranges from list: i.e. [(0,1),(1,2),(2,3),(3,4)]
         funcPairs = lambda liste: [(liste[x], liste[x + 1]) for x in range(0, len(liste) - 1)]
@@ -638,8 +652,8 @@ class DataFrameAnalizer():
 
         # Identifying to which group belongs each cell of column Dataframe and count them in order to get frequencies
         # for each searh interval.
-        freqDf = tempDf.select(col(column), generateExpr(column, ranges).alias("value"))\
-                .groupBy("value").count()
+        freqDf = tempDf.select(col(column), generateExpr(column, ranges).alias("value")) \
+            .groupBy("value").count()
 
         # +-----------+-----+
         # |intervals  |count|
@@ -658,7 +672,7 @@ class DataFrameAnalizer():
         ranges1 = list(reversed(ranges))
 
         # From intervals, bins are calculated as the average of min and max interval.
-        bins = [np.mean([rmin,rmax]) for (rmin, rmax) in ranges1]
+        bins = [np.mean([rmin, rmax]) for (rmin, rmax) in ranges1]
 
         func = udf(lambda x: float(bins[x]), DoubleType())
 
@@ -689,10 +703,9 @@ class DataFrameAnalizer():
 
         return {'total': total, 'unique': distincts}
 
-
     def writeJson(self, jsonCols, pathToJsonFile):
 
-        #assert isinstance(jsonCols, dict), "Error: columnAnalyse must be run before writeJson function."
+        # assert isinstance(jsonCols, dict), "Error: columnAnalyse must be run before writeJson function."
 
         jsonCols = dumps(jsonCols)
 
