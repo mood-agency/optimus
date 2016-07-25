@@ -28,10 +28,17 @@ class Utilites():
         """This funcion read a dataset from a csv file.
 
         :param path     Path or location of the file.
-        :param: delimiterMark   Usually delimiter mark are ',' or ';'.
+        :param delimiterMark   Usually delimiter mark are ',' or ';'.
         :param  header:     Tell the function is the dataset has a header row.
 
+        :return dataFrame
         """
+        assert ((header == 'true') or (header == 'false')), "Error, header argument must be 'true' or 'false'. " \
+                                                             "header must be string dataType, i.e: header='true'"
+        assert isinstance(delimiterMark, str), "Error, delimiter mark argumen must be string dataType."
+
+        assert isinstance(path, str), "Error, path argument must be string datatype."
+
         return self.sqlContext \
                 .read \
                 .format('com.databricks.spark.csv') \
@@ -39,6 +46,41 @@ class Utilites():
                 .options(delimiter=delimiterMark) \
                 .options(inferSchema='true') \
                 .load(path)
+
+    def readDatasetParquet(self, path):
+        """This function allows user to read parquet files. It is import to clarify that this method is just based
+        on the sqlContext.read.parquet(path) Apache Spark method. Only assertion instructions has been added to
+        ensure user has more hints about what happened when something goes wrong.
+        :param  path    Path or location of the file. Must be string dataType.
+
+        :return dataFrame"""
+        assert isinstance(path, str), "Error: path argument must be string dataType."
+        assert (("file:///" == path[0:8]) or ("hdfs:///" == path[0:8])), "Error: path must be with a 'file://' prefix \
+        if the file is in the local disk or a 'path://' prefix if the file is in the Hadood file system"
+        return sqlContext.read.parquet(path)
+
+
+    def csvToParquet(self, inputPath, outputPath, delimiterMarkCsv, headerCsv, numPartitions=None):
+        """This method transform a csv dataset file into a parquet.
+
+        The method reads a existing csv file using the inputPath, delimiterMarkCsv and headerCsv arguments.
+
+        :param  inputPath   Address location of the csv file.
+        :param  outputPath  Address where the new parquet file will be stored.
+        :param  delimiterMarkCsv    Delimiter mark of the csv file, usually is ',' or ';'.
+        :param  headerCsv   This argument specifies if csv file has header or not.
+        :param  numParitions Specifies the number of partitions the user wants to write the dataset."""
+
+        df = self.readDatasetCsv(inputPath, delimiterMarkCsv, 'true')
+
+        if numPartitions != None:
+            assert (numPartitions <= df.rdd.getNumPartitions()), "Error: numPartitions specified is greater that the" \
+                                                                "partitions in file store in memory."
+            # Writting dataset:
+            df.coalesce(numPartitions).write.parquet(outputPath)
+
+        else:
+            df.write.parquet(outputPath)
 
     # hadoop fs -ls hdfs://server.mcbo.mood.com.ve:8020/pruebas
     def setCheckPointFolder(self, path, fileSystem):
