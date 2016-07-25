@@ -8,7 +8,7 @@ spark original modules but with some features added to facilitate its use.
 
 Since functions in this library are mounted in the Spark SQL Context,
 it offers not only the high performance of original Spark SQL functions
-but an easier usability.  
+but also an easier usability.  
 
 ## Requirements
 * Apache Spark 1.6
@@ -20,29 +20,58 @@ but an easier usability.
 2 - When starting pySpark in terminal, write the following line:
 `$ pyspark --packages com.databricks:spark-csv_2.11:1.3.0 --py-files DfAnalizer.py,DfTransf.py,utilities.py`
 
-
 ## DFTransformer class
-* DFTransformer(dataFrame)
+* DataFrameTransformer(df)
 
-### Methods
-* DFTransformer.trimCol(columns)
-* DFTransformer.dropCol(columns)
-* DFTransformer.replaceCol(search, changeTo, columns)
-* DFTransformer.dropRow(columns)
-* DFTransformer.deleteRow(func)
-* DFTransformer.keepCol(columns)
-* DFTransformer.setCol(columns, func, dataType)
+<h4> Methods </h4>
+<ul>
+  <li>
+      <h5>Column operations</h5>
+        <ol>
+          <li>DFTransformer.dropCol(columns)</li>
+          <li>DFTransformer.replaceCol(search, changeTo, columns)</li>
+          <li>DFTransformer.keepCol(columns)</li>
+          <li>DFTransformer.renameCol(column, newName)</li>
+          <li>DFTransformer.moveCol(column, refCol, position)</li>
+        </ol>
+  </li>
 
-* DFTransformer.clearAccents(columns)
-* DFTransformer.removeSpecialChars(columns)
-* DFTransformer.renameCol(column, newName)
-* DFTransformer.lookup(column, listStr, StrToReplace)
-* DFTransformer.moveCol(column, refCol, position)
-* DFTransformer.dateTransform(column, dateFormat)
-* DFTransformer.contarTable(coldId, col, newColFeature)
-* DFTransformer.ageCalculate(column)
+  <li>
+      <h5>Row operations</h5>
+        <ol>
+          <li>DFTransformer.dropRow(columns)</li>
+          <li>DFTransformer.deleteRow(func)</li>
+        </ol>
+
+  </li>
+
+  <li>
+  <h5> String operations</h5>:
+  <ol>
+  <li>DFTransformer.trimCol(columns)</li>
+  <li>DFTransformer.clearAccents(columns)</li>
+  <li>DFTransformer.lookup(column, listStr, StrToReplace)</li>
+  <li>DFTransformer.removeSpecialChars(columns)</li>
+  <li>DFTransformer.dateTransform(column, dateFormat)</li>
+  </ol>
+
+  </li>
+</ul>
+
+
+#### General operation function:
+<ol>
+<li>DFTransformer.setCol(columns, func, dataType)</li>
+</ol>
+
+#### Others:
+<ol>
+<li>DFTransformer.contarTable(coldId, col, newColFeature)</li>
+<li>DFTransformer.ageCalculate(column)</li>
+</ol>
 
 ## Description:
+
 
 ## Transformer class
 #### * Transformer(dataFrame)
@@ -92,10 +121,14 @@ transformer.df.show()
 ```
 
 ## Methods
+Go to section
+* [Hello](#hello)  
+* [Hello World](#hello-world)
+* [Another section](#new-section)    <-- it's called 'Another section' in this list but refers to 'New section'
 
-[Link to Header](#description)
 
-#### * Transformer.trimCol(columns)
+
+#### Transformer.trimCol(columns)
 
 This methods cut left and right extra spaces in column strings provided by user.
 
@@ -143,7 +176,11 @@ Trimmed dataFrame:
 |  Madrid|  Spain|   6489162|
 +--------+-------+----------+
 ```
+## testr
 
+## Hello
+### Hello World
+## New section
 
 #### * Transformer.dropCol(columns)
 
