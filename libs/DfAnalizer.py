@@ -14,6 +14,7 @@ from IPython.display import display, HTML
 import time
 # Importing dumps
 from json import dumps
+import pyspark.sql.dataframe
 
 plt.style.use('ggplot')
 
@@ -147,11 +148,30 @@ class DataTypeTable():
 # This class makes an analisis of dataframe datatypes and its different general features.
 class DataFrameAnalizer():
     def __init__(self, df, pathFile, pu=0.1, seed=13):
+        # Asserting if df is dataFrame datatype.
+        assert (isinstance(df, pyspark.sql.dataframe.DataFrame)), \
+            "Error, df argument must be a pyspark.sql.dataframe.DataFrame instance"
+        # Asserting if path specified is string datatype
+        assert (isinstance(pathFile, str)), \
+            "Error, pathFile argument must be string datatype."
+        # Asserting if path includes the type of filesystem
+        assert (("file:///" == pathFile[0:8]) or ("hdfs:///" == pathFile[0:8])), \
+            "Error: path must be with a 'file://' prefix \
+            if the file is in the local disk or a 'path://' \
+            prefix if the file is in the Hadood file system"
+
+        # Asserting if seed is integer
+        assert isinstance(seed, int), "Error, seed must be an integer"
+
+        # Asserting pu is between 0 and 1.
+        assert (pu <= 1) and (pu >= 0), "Error, pu argument must be between 0 and 1"
+
         # Dataframe
         self.__rowNumber = 0
         self.__pathFile = pathFile
         self.__currentlyObserved = 0  # 0 => whole 1 => partition
         self.__df = df
+        self.__df.cache()
         self.__sample = df.sample(False, pu, seed)
 
     def __createDict(self, keys, values):
@@ -419,6 +439,9 @@ class DataFrameAnalizer():
         if self.__currentlyObserved == 1:
             self.__swapStatus()
 
+    def unpersistDF(self):
+        self.__df.unpersist()
+
     def setDataframe(self, df):
         """This function set a dataframe into the class for subsequent actions.
         """
@@ -460,7 +483,6 @@ class DataFrameAnalizer():
         # numBars: number of bars printed in histogram
         # Output:
         # values: a list containing the number of the different datatypes [nulls, strings, integers, floats]
-
         """
         # Asserting data variable columnList:
         assert type(columnList) == type([1, 2]) or type(columnList) == type(' '), "Error: columnList has to be a list."
@@ -529,20 +551,16 @@ class DataFrameAnalizer():
     def plotHist(self, dfOneCol, typeHist, numBars=20, valuesBar=True):
         """
         This function builds the histogram (bins) of an categorical column dataframe.
-
         Inputs:
         dfOneCol: A dataframe of one column.
         typeHist: type of histogram to be generated, numerical or categorical
         numBars: Number of bars in histogram.
         valuesBar: If valuesBar is True, values of frequency are plotted over bars.
         Outputs: dictionary of the histogram generated
-
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         Example:
-
         self.plotHist(df[column], typeHist='categorical', valuesBar=True)
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
         """
 
         assert isinstance(typeHist, str), "Error, typeHist argument provided must be a string."
@@ -689,9 +707,7 @@ class DataFrameAnalizer():
     def uniqueValuesCol(self, column):
         """This function counts the number of values that are unique and also the total number of values.
         Then, returns the values obtained.
-
         :param  column      Name of column dataFrame, this argument must be string type.
-
         :return         dictionary of values counted, as an example:
                         {'unique': 10, 'total': 15}
         """
