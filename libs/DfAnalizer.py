@@ -237,7 +237,6 @@ class DataFrameAnalizer():
         return values
 
         # Analize of each column:
-
     def __analize(self, dfColAnalizer, column, rowNumber, plots, printType, valuesBar, numBars, typesDict):
         sampleTableDict = {'string': 0., 'integer': 0, 'float': 0}
         # Calling verification ruotine to obtain datatype's counts
@@ -254,7 +253,6 @@ class DataFrameAnalizer():
             # Sum the first and the second number:
             sumFirstAndSecond = lambda lista: [lista[x] + lista[0] if x == 1 else lista[x] for x in range(len(lista))][
                                               1:]
-
             # Check if the column has different datatypes:
             differentTypes = sum([1 if x == 0 else 0 for x in sumFirstAndSecond(f[1:])]) < 2
 
@@ -296,29 +294,42 @@ class DataFrameAnalizer():
 
         # Plotting histograms:
         # If number of strings is greater than (number of integers + number of floats)
-        if (stringQty > numberQty) and (plots == True):
-            histPlot = self.plotHist(
-                dfOneCol=dfColAnalizer.select(column),
-                typeHist='categorical',
-                numBars=numBars,
-                valuesBar=valuesBar)
-            plt.show()
+        if (stringQty > numberQty):
+            # Building histogram:
+            histDict = self.getCategoricalHist(dfColAnalizer.select(column), numBars)
+            histPlot = {"data": histDict}
+
+            if plots == True:
+                self.plotHist(
+                    dfOneCol=dfColAnalizer.select(column),
+                    histDict=histDict,
+                    typeHist='categorical',
+                    numBars=numBars,
+                    valuesBar=valuesBar)
+                plt.show()
 
 
-        elif (stringQty < numberQty) and (plots == True):
-            # Create the general blog and the "subplots" i.e. the bars
-            f = plt.figure(figsize=(6, 3))
+        elif (stringQty < numberQty):
+            # Building histogram:
+            histDict = self.getNumericalHist(dfColAnalizer.select(column), numBars)
+            histPlot = {"data": histDict}
 
-            # This function, place values of frequency in histogram bars.
-            histPlot = self.plotHist(dfColAnalizer.select(column),
-                                     typeHist='numerical',
-                                     numBars=numBars,
-                                     valuesBar=valuesBar)
+            if plots == True:
+                # Create the general blog and the "subplots" i.e. the bars
+                histPlot = self.plotHist(dfColAnalizer.select(column),
+                                        histDict=histDict,
+                                        typeHist='numerical',
+                                        numBars=numBars,
+                                        valuesBar=valuesBar)
+                plt.show()
 
         else:
             print("No valid data to print histogram or plots argument set to False")
 
             histPlot = {"data": [{"count": 0, "value": "none"}]}
+
+
+
 
         numbers = list(dtypeNumbers[1:])
         valid_values = self.__createDict(['total', 'string', 'integer', 'float'],
@@ -346,8 +357,8 @@ class DataFrameAnalizer():
 
         return invalidCols, percentages, numbers, columnDict
 
-        # This function, place values of frequency in histogram bars.
 
+    # This function, place values of frequency in histogram bars.
     def __valuesOnBar(self, plotFig):
         rects = plotFig.patches
         for rect in rects:
@@ -548,11 +559,12 @@ class DataFrameAnalizer():
         jsonCols = self.__createDict(["summary", "columns"], [self.generalDescription(), jsonCols])
         return invalidCols, jsonCols
 
-    def plotHist(self, dfOneCol, typeHist, numBars=20, valuesBar=True):
+    def plotHist(self, dfOneCol, histDict, typeHist, numBars=20, valuesBar=True):
         """
         This function builds the histogram (bins) of an categorical column dataframe.
         Inputs:
-        dfOneCol: A dataframe of one column.
+        dfOneCol: A dataFrame of one column.
+        histDict: Python dictionary with histogram values
         typeHist: type of histogram to be generated, numerical or categorical
         numBars: Number of bars in histogram.
         valuesBar: If valuesBar is True, values of frequency are plotted over bars.
@@ -571,20 +583,21 @@ class DataFrameAnalizer():
         column = dfOneCol.columns[0]
 
         if typeHist == 'categorical':
-            histDict = self.getCategoricalHist(dfOneCol, numBars)
             # Plotting histogram
             self.__plotCatHist(histDict, column, valuesBar=True)
-
         else:
-            histDict = self.getNumericalHist(dfOneCol, numBars)
+            # Plotting histogram
             self.__plotNumHist(histDict, column, valuesBar=True)
-
-        return {"data": histDict}
 
     def getCategoricalHist(self, dfOneCol, numBars):
         """This function analyzes a dataframe of a single column (only string type columns) and
-        returns a dictionary with bins and values of frequency."""
+        returns a dictionary with bins and values of frequency.
 
+        :param dfOneCol     One column dataFrame.
+        :param numBars      Number of bars or histogram bins.
+        :return histDict    Python dictionary with histogram values and bins."""
+
+        assert isinstance(numBars, int), "Error, numBars argument must be a string dataType."
         assert len(dfOneCol.columns) == 1, "Error, Dataframe provided must have only one column."
         assert dfOneCol.dtypes[0][1] == 'string', "Error, Dataframe column must be string data type."
 
