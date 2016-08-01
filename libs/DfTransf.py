@@ -10,18 +10,6 @@ import string
 import unicodedata
 import pyspark.sql.dataframe
 
-# Importando modulo para interfaz con el sitema operativo
-import os
-# Importando modulo para eliminar carpetas
-from shutil import rmtree
-# Importando modulo para trabajar con urls
-import urllib.request
-# Importing SQLContext:
-from pyspark.sql import SQLContext
-
-# Importing dumps
-from json import dumps
-
 
 class DataFrameTransformer():
     """DataFrameTransformer is a class to make transformations in dataFrames"""
@@ -30,6 +18,9 @@ class DataFrameTransformer():
         """Class constructor.
         :param  df      DataFrame to be transformed.
         """
+        assert (isinstance(df, pyspark.sql.dataframe.DataFrame)), \
+            "Error, df argument must be a pyspark.sql.dataframe.DataFrame instance"
+
         # Dataframe
         self.__df = df
         # SparkContext:
@@ -77,10 +68,9 @@ class DataFrameTransformer():
         """This function set all strings in columns of dataframe specified to lowercase.
         Columns argument must be a string or a list of string. In order to apply this function to all
         dataframe, columns must be equal to '*'"""
+
         func = lambda cell: cell.lower() if cell is not None else cell
         self.setCol(columns, func, 'string')
-
-        self.__addTransformation()
         return self
 
     def upperCase(self, columns):
@@ -89,8 +79,6 @@ class DataFrameTransformer():
         dataframe, columns must be equal to '*'"""
         func = lambda cell: cell.upper() if cell is not None else cell
         self.setCol(columns, func, 'string')
-
-        self.__addTransformation()
         return self
 
     def checkPoint(self):
@@ -113,6 +101,8 @@ class DataFrameTransformer():
         self.__df.rdd.count()
         self.__df = self.__sqlContext.createDataFrame(self.__df.rdd, self.__df.schema)
         print ("Done.")
+
+    execute = checkPoint
 
     def trimCol(self, columns):
         """This methods cut left and right extra spaces in column strings provided by user.
@@ -708,7 +698,6 @@ class DataFrameTransformer():
                 months_between(date_format(
                     unix_timestamp(column, dateFormat).cast("timestamp"), Format), current_date()) / 12), 4).alias(
             nameColAge)
-        #         .alias('Age')
 
         self.__df = self.__df.withColumn(nameColAge, exprs)
 
