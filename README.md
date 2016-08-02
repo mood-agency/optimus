@@ -1,3 +1,33 @@
+## Optimus
+
+Optimus is a class that binds the DataFrameTransformer and DataFrameAnalyzer
+functionalities.
+
+The following schema shows the structure class organization of the whole library:
+
+<ul>
+  <li> Optimus
+      <ul>
+          <li>DataFrameTransformer</li>
+          <li>DataFrameAnalyzer</li>
+      </ul>
+  </li>
+
+  <li>
+      utilities
+  </li>
+</ul>
+
+## Requirements
+* Apache Spark 1.6
+* Python 3.5
+
+## Installation:
+1 - Download `libs` folder and place the content inside your working folder.
+
+2 - When starting pySpark in terminal, write the following line:
+`$ pyspark --packages com.databricks:spark-csv_2.11:1.3.0 --py-files DfAnalizer.py,DfTransf.py,utilities.py`
+
 ## DataFrameTransformer
 
 DataFrameTransformer is a powerful and flexible library to make dataFrame
@@ -9,16 +39,6 @@ spark original modules but with some features added to facilitate its use.
 Since functions in this library are mounted in the Spark SQL Context,
 it offers not only the high performance of original Spark SQL functions
 but also an easier usability.  
-
-## Requirements
-* Apache Spark 1.6
-* Python 3.5
-
-## Installation:
-1 - Download `libs` folder and place the content inside your working folder.
-
-2 - When starting pySpark in terminal, write the following line:
-`$ pyspark --packages com.databricks:spark-csv_2.11:1.3.0 --py-files DfAnalizer.py,DfTransf.py,utilities.py`
 
 ## DFTransformer class
 * DataFrameTransformer(df)
@@ -46,30 +66,34 @@ but also an easier usability.
   </li>
 
   <li>
-  <h5> String operations</h5>:
-  <ol>
-  <li>DFTransformer.trimCol(columns)</li>
-  <li>DFTransformer.clearAccents(columns)</li>
-  <li>DFTransformer.lookup(column, listStr, StrToReplace)</li>
-  <li>DFTransformer.removeSpecialChars(columns)</li>
-  <li>DFTransformer.dateTransform(column, dateFormat)</li>
-  </ol>
+      <h5> String operations</h5>
+      <ol>
+          <li>DFTransformer.trimCol(columns)</li>
+          <li>DFTransformer.clearAccents(columns)</li>
+          <li>DFTransformer.lookup(column, listStr, StrToReplace)</li>
+          <li>DFTransformer.removeSpecialChars(columns)</li>
+          <li>DFTransformer.dateTransform(column, dateFormat)</li>
+      </ol>
+  </li>
+
+
+  <li>
+      <h5>General operation function:</h5>
+        <ol>
+          <li>DFTransformer.setCol(columns, func, dataType)</li>
+        </ol>
+  </li>
+
+  <li>  
+      <h5>Others</h5>
+      <ol>
+        <li>DFTransformer.contarTable(coldId, col, newColFeature)</li>
+        <li>DFTransformer.ageCalculate(column)</li>
+      </ol>
 
   </li>
+
 </ul>
-
-
-#### General operation function:
-<ol>
-<li>DFTransformer.setCol(columns, func, dataType)</li>
-</ol>
-
-#### Others:
-<ol>
-<li>DFTransformer.contarTable(coldId, col, newColFeature)</li>
-<li>DFTransformer.ageCalculate(column)</li>
-</ol>
-
 ## Description:
 
 
