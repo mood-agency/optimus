@@ -28,6 +28,8 @@ The following schema shows the structure class organization of the whole library
 2 - When starting pySpark in terminal, write the following line:
 `$ pyspark --packages com.databricks:spark-csv_2.11:1.3.0 --py-files DfAnalizer.py,DfTransf.py,utilities.py`
 
+## Description:
+
 ## DataFrameTransformer
 
 DataFrameTransformer is a powerful and flexible library to make dataFrame
@@ -40,27 +42,43 @@ Since functions in this library are mounted in the Spark SQL Context,
 it offers not only the high performance of original Spark SQL functions
 but also an easier usability.  
 
-## DFTransformer class
+
+## Optimus
+Optimus is a class that wraps DataFrameAnalyzer and DataFrameTransformer classes.
+
+
+## DataFrameAnalyzer
+
+DataFrameAnalyzer class analyze dataType of rows in each columns of dataFrames.
+
+* columnAnalize
+* plotHist
+* getCategoricalHist
+* getNumericalHist
+* uniqueValuesCol
+* writeJson
+
+## DataFrameTransformer class
 * DataFrameTransformer(df)
 
-<h4> Methods </h4>
+<h4> DataFrameTransformer methods </h4>
 <ul>
   <li>
       <h5>Column operations</h5>
         <ol>
-          <li>DFTransformer.dropCol(columns)</li>
-          <li>DFTransformer.replaceCol(search, changeTo, columns)</li>
-          <li>DFTransformer.keepCol(columns)</li>
-          <li>DFTransformer.renameCol(column, newName)</li>
-          <li>DFTransformer.moveCol(column, refCol, position)</li>
+          <li>DataFrameTransformer.dropCol(columns)</li>
+          <li>DataFrameTransformer.replaceCol(search, changeTo, columns)</li>
+          <li>DataFrameTransformer.keepCol(columns)</li>
+          <li>DataFrameTransformer.renameCol(column, newName)</li>
+          <li>DataFrameTransformer.moveCol(column, refCol, position)</li>
         </ol>
   </li>
 
   <li>
       <h5>Row operations</h5>
         <ol>
-          <li>DFTransformer.dropRow(columns)</li>
-          <li>DFTransformer.deleteRow(func)</li>
+          <li>DataFrameTransformer.dropRow(columns)</li>
+          <li>DataFrameTransformer.deleteRow(func)</li>
         </ol>
 
   </li>
@@ -68,11 +86,11 @@ but also an easier usability.
   <li>
       <h5> String operations</h5>
       <ol>
-          <li>DFTransformer.trimCol(columns)</li>
-          <li>DFTransformer.clearAccents(columns)</li>
-          <li>DFTransformer.lookup(column, listStr, StrToReplace)</li>
-          <li>DFTransformer.removeSpecialChars(columns)</li>
-          <li>DFTransformer.dateTransform(column, dateFormat)</li>
+          <li>DataFrameTransformer.trimCol(columns)</li>
+          <li>DataFrameTransformer.clearAccents(columns)</li>
+          <li>DataFrameTransformer.lookup(column, listStr, StrToReplace)</li>
+          <li>DataFrameTransformer.removeSpecialChars(columns)</li>
+          <li>DataFrameTransformer.dateTransform(column, dateFormat)</li>
       </ol>
   </li>
 
@@ -80,31 +98,29 @@ but also an easier usability.
   <li>
       <h5>General operation function:</h5>
         <ol>
-          <li>DFTransformer.setCol(columns, func, dataType)</li>
+          <li>DataFrameTransformer.setCol(columns, func, dataType)</li>
         </ol>
   </li>
 
   <li>  
       <h5>Others</h5>
       <ol>
-        <li>DFTransformer.contarTable(coldId, col, newColFeature)</li>
-        <li>DFTransformer.ageCalculate(column)</li>
+        <li>DataFrameTransformer.contarTable(coldId, col, newColFeature)</li>
+        <li>DataFrameTransformer.ageCalculate(column)</li>
       </ol>
 
   </li>
 
 </ul>
-## Description:
 
 
 ## Transformer class
 #### * Transformer(dataFrame)
 
-DFTransformer class receives a dataFrame as an argument. This class has all
+DataFrameTransformer class receives a dataFrame as an argument. This class has all
 methods listed aboved.
 
 Note: Every possible transformation make changes over this dataFrame and overwrites it.
-
 
 The following code shows how to instanciate the class to transform a dataFrame:
 
@@ -130,27 +146,21 @@ df = sqlContext.createDataFrame(list(zip(cities, countries, population)), schema
 # DataFrameTransformer Instanciation:
 transformer = DataFrameTransformer(df)
 
-transformer.df.show()
+transformer.getDataframe().show()
 ```
 
 ```python
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      Tokyo|  Japan|  37800000|
-|   New York|    USA|  19795791|
-|   Paris   | France|  12341418|
-|     Madrid|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      Tokyo|  Japan|  37800000|
+#|   New York|    USA|  19795791|
+#|   Paris   | France|  12341418|
+#|     Madrid|  Spain|   6489162|
+#+-----------+-------+----------+
 ```
 
 ## Methods
-Go to section
-* [Hello](#hello)  
-* [Hello World](#hello-world)
-* [Another section](#new-section)    <-- it's called 'Another section' in this list but refers to 'New section'
-
-
 
 #### Transformer.trimCol(columns)
 
@@ -169,36 +179,36 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # Triming string blank spaces:
 transformer.trimCol("*")
 
 # Printing trimmed dataFrame:
 print('Trimmed dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 ```
 
 ```python
 Original dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      Tokyo|  Japan|  37800000|
-|   New York|    USA|  19795791|
-|   Paris   | France|  12341418|
-|     Madrid|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      Tokyo|  Japan|  37800000|
+#|   New York|    USA|  19795791|
+#|   Paris   | France|  12341418|
+#|     Madrid|  Spain|   6489162|
+#+-----------+-------+----------+
 
 Trimmed dataFrame:
-+--------+-------+----------+
-|    city|country|population|
-+--------+-------+----------+
-|   Tokyo|  Japan|  37800000|
-|New York|    USA|  19795791|
-|   Paris| France|  12341418|
-|  Madrid|  Spain|   6489162|
-+--------+-------+----------+
+#+--------+-------+----------+
+#|    city|country|population|
+#+--------+-------+----------+
+#|   Tokyo|  Japan|  37800000|
+#|New York|    USA|  19795791|
+#|   Paris| France|  12341418|
+#|  Madrid|  Spain|   6489162|
+#+--------+-------+----------+
 ```
 ## testr
 
@@ -221,36 +231,36 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # drop column specified:
 transformer.dropCol("country")
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 ```
 
 ```python
 Original dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      Tokyo|  Japan|  37800000|
-|   New York|    USA|  19795791|
-|   Paris   | France|  12341418|
-|     Madrid|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      Tokyo|  Japan|  37800000|
+#|   New York|    USA|  19795791|
+#|   Paris   | France|  12341418|
+#|     Madrid|  Spain|   6489162|
+#+-----------+-------+----------+
 
 New dataFrame:
-+-----------+----------+
-|       city|population|
-+-----------+----------+
-|      Tokyo|  37800000|
-|   New York|  19795791|
-|   Paris   |  12341418|
-|     Madrid|   6489162|
-+-----------+----------+
+#+-----------+----------+
+#|       city|population|
+#+-----------+----------+
+#|      Tokyo|  37800000|
+#|   New York|  19795791|
+#|   Paris   |  12341418|
+#|     Madrid|   6489162|
+#+-----------+----------+
 ```
 
 #### * Transformer.keepCol(columns)
@@ -268,37 +278,37 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # Keep columns specified by user:
 transformer.keepCol(['city', 'population'])
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 ```
 
 
 ```python
 Original dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      Tokyo|  Japan|  37800000|
-|   New York|    USA|  19795791|
-|   Paris   | France|  12341418|
-|     Madrid|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      Tokyo|  Japan|  37800000|
+#|   New York|    USA|  19795791|
+#|   Paris   | France|  12341418|
+#|     Madrid|  Spain|   6489162|
+#+-----------+-------+----------+
 
 New dataFrame:
-+-----------+----------+
-|       city|population|
-+-----------+----------+
-|      Tokyo|  37800000|
-|   New York|  19795791|
-|   Paris   |  12341418|
-|     Madrid|   6489162|
-+-----------+----------+
+#+-----------+----------+
+#|       city|population|
+#+-----------+----------+
+#|      Tokyo|  37800000|
+#|   New York|  19795791|
+#|   Paris   |  12341418|
+#|     Madrid|   6489162|
+#+-----------+----------+
 ```
 
 #### * Transformer.replaceCol(search, changeTo, columns)
@@ -323,36 +333,36 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # Replace values in columns specified by user:
 transformer.replaceCol(search='Tokyo', changeTo='Maracaibo', columns='city')
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 ```
 
 ```python
 Original dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      Tokyo|  Japan|  37800000|
-|   New York|    USA|  19795791|
-|   Paris   | France|  12341418|
-|     Madrid|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      Tokyo|  Japan|  37800000|
+#|   New York|    USA|  19795791|
+#|   Paris   | France|  12341418|
+#|     Madrid|  Spain|   6489162|
+#+-----------+-------+----------+
 
 New dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|  Maracaibo|  Japan|  37800000|
-|   New York|    USA|  19795791|
-|   Paris   | France|  12341418|
-|     Madrid|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|  Maracaibo|  Japan|  37800000|
+#|   New York|    USA|  19795791|
+#|   Paris   | France|  12341418|
+#|     Madrid|  Spain|   6489162|
+#+-----------+-------+----------+
 ```
 
 #### * Transformer.deleteRow(func)
@@ -374,7 +384,7 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # Replace values in columns specified by user:
 func = lambda pop: (pop > 6500000) & (pop <= 30000000)
@@ -382,30 +392,29 @@ transformer.deleteRow(func(col('population')))
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 ```
 
 ```python
 
 Original dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      Tokyo|  Japan|  37800000|
-|   New York|    USA|  19795791|
-|   Paris   | France|  12341418|
-|     Madrid|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      Tokyo|  Japan|  37800000|
+#|   New York|    USA|  19795791|
+#|   Paris   | France|  12341418|
+#|     Madrid|  Spain|   6489162|
+#+-----------+-------+----------+
 
 New dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|   New York|    USA|  19795791|
-|   Paris   | France|  12341418|
-+-----------+-------+----------+
-
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|   New York|    USA|  19795791|
+#|   Paris   | France|  12341418|
+#+-----------+-------+----------+
 ```
 
 **Example 2:**
@@ -421,7 +430,7 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # Delect rows where Tokyo isn't found in city
 # column or France isn't found in country column:
@@ -430,29 +439,28 @@ transformer.deleteRow(func(col('city'), col('country')))
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 ```
 
 ```python
 
 Original dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      Tokyo|  Japan|  37800000|
-|   New York|    USA|  19795791|
-|   Paris   | France|  12341418|
-|     Madrid|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      Tokyo|  Japan|  37800000|
+#|   New York|    USA|  19795791|
+#|   Paris   | France|  12341418|
+#|     Madrid|  Spain|   6489162|
+#+-----------+-------+----------+
 
 New dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      Tokyo|  Japan|  37800000|
-|   Paris   | France|  12341418|
-+-----------+-------+----------+
-
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      Tokyo|  Japan|  37800000|
+#|   Paris   | France|  12341418|
+#+-----------+-------+----------+
 ```
 
 
@@ -484,7 +492,7 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 print (' Replacing a number if value in cell is greater than 5:')
 
@@ -494,31 +502,31 @@ transformer.setCol(['population'], func, 'integer')
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 ```
 
 ```python
 Original dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      Tokyo|  Japan|  37800000|
-|   New York|    USA|  19795791|
-|   Paris   | France|  12341418|
-|     Madrid|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      Tokyo|  Japan|  37800000|
+#|   New York|    USA|  19795791|
+#|   Paris   | France|  12341418|
+#|     Madrid|  Spain|   6489162|
+#+-----------+-------+----------+
 
 Replacing a number if value in cell is greater than 14000000:
 New dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      Tokyo|  Japan|  75600000|
-|   New York|    USA|  39591582|
-|   Paris   | France|  12341418|
-|     Madrid|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      Tokyo|  Japan|  75600000|
+#|   New York|    USA|  39591582|
+#|   Paris   | France|  12341418|
+#|     Madrid|  Spain|   6489162|
+#+-----------+-------+----------+
 ```
 
 **Example 2:**
@@ -529,7 +537,7 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # Capital letters:
 func = lambda cell: cell.upper()
@@ -537,30 +545,30 @@ transformer.setCol(['city'], func, 'string')
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 ```
 
 ```python
 Original dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      Tokyo|  Japan|  37800000|
-|   New York|    USA|  19795791|
-|   Paris   | France|  12341418|
-|     Madrid|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      Tokyo|  Japan|  37800000|
+#|   New York|    USA|  19795791|
+#|   Paris   | France|  12341418|
+#|     Madrid|  Spain|   6489162|
+#+-----------+-------+----------+
 
 New dataFrame:
-+-----------+-------+----------+
-|       city|country|population|
-+-----------+-------+----------+
-|      TOKYO|  Japan|  37800000|
-|   NEW YORK|    USA|  19795791|
-|   PARIS   | France|  12341418|
-|     MADRID|  Spain|   6489162|
-+-----------+-------+----------+
+#+-----------+-------+----------+
+#|       city|country|population|
+#+-----------+-------+----------+
+#|      TOKYO|  Japan|  37800000|
+#|   NEW YORK|    USA|  19795791|
+#|   PARIS   | France|  12341418|
+#|     MADRID|  Spain|   6489162|
+#+-----------+-------+----------+
 ```
 
 
@@ -599,14 +607,14 @@ df.show()
 ```
 
 ```python
-+---------------+--------+----------+
-|           city| country|population|
-+---------------+--------+----------+
-|         Bogotá|Colombia|  37800000|
-|       New York|    US@A|  19795791|
-|   São Paulo   |  Brazil|  12341418|
-|        ~Madrid|   Spain|   6489162|
-+---------------+--------+----------+
+#+---------------+--------+----------+
+#|           city| country|population|
+#+---------------+--------+----------+
+#|         Bogotá|Colombia|  37800000|
+#|       New York|    US@A|  19795791|
+#|   São Paulo   |  Brazil|  12341418|
+#|        ~Madrid|   Spain|   6489162|
+#+---------------+--------+----------+
 ```
 
 ```python
@@ -615,14 +623,14 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # Clear accents:
 transformer.clearAccents(columns='*')
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 ```
 
 ```python
@@ -649,7 +657,7 @@ New dataFrame:
 
 ```
 
-#### * DFTransformer.removeSpecialChars(columns)
+#### * DataFrameTransformer.removeSpecialChars(columns)
 This method remove special characters (i.e. !"#$%&/()=?) in columns of dataFrames.
 
 `removeSpecialChars` method receives `columns` as input. `columns` must be a
@@ -664,43 +672,43 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # Remove special characters:
 transformer.removeSpecialChars(columns=['city', 'country'])
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 ```
 
 ```python
 
 Original dataFrame:
-+---------------+--------+----------+
-|           city| country|population|
-+---------------+--------+----------+
-|         Bogotá|Colombia|  37800000|
-|       New York|    US@A|  19795791|
-|   São Paulo   |  Brazil|  12341418|
-|        ~Madrid|   Spain|   6489162|
-+---------------+--------+----------+
+#+---------------+--------+----------+
+#|           city| country|population|
+#+---------------+--------+----------+
+#|         Bogotá|Colombia|  37800000|
+#|       New York|    US@A|  19795791|
+#|   São Paulo   |  Brazil|  12341418|
+#|        ~Madrid|   Spain|   6489162|
+#+---------------+--------+----------+
 
 New dataFrame:
-+---------------+--------+----------+
-|           city| country|population|
-+---------------+--------+----------+
-|         Bogotá|Colombia|  37800000|
-|       New York|     USA|  19795791|
-|   São Paulo   |  Brazil|  12341418|
-|         Madrid|   Spain|   6489162|
-+---------------+--------+----------+
+#+---------------+--------+----------+
+#|           city| country|population|
+#+---------------+--------+----------+
+#|         Bogotá|Colombia|  37800000|
+#|       New York|     USA|  19795791|
+#|   São Paulo   |  Brazil|  12341418|
+#|         Madrid|   Spain|   6489162|
+#+---------------+--------+----------+
 
 
 ```
 
-#### * DFTransformer.renameCol(column, newName)
+#### * DataFrameTransformer.renameCol(column, newName)
 This method changes name of column specified by `column` argument. `newName` is
 the name to be set in column dataFrame.
 
@@ -712,7 +720,7 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 names = [('city', 'villes')]
 # Changing name of columns:
@@ -720,35 +728,35 @@ transformer.renameCol(names)
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 ```
 
 ```python
 
 Original dataFrame:
-+---------------+--------+----------+
-|           city| country|population|
-+---------------+--------+----------+
-|         Bogotá|Colombia|  37800000|
-|       New York|    US@A|  19795791|
-|   São Paulo   |  Brazil|  12341418|
-|        ~Madrid|   Spain|   6489162|
-+---------------+--------+----------+
+#+---------------+--------+----------+
+#|           city| country|population|
+#+---------------+--------+----------+
+#|         Bogotá|Colombia|  37800000|
+#|       New York|    US@A|  19795791|
+#|   São Paulo   |  Brazil|  12341418|
+#|        ~Madrid|   Spain|   6489162|
+#+---------------+--------+----------+
 
 New dataFrame:
-+---------------+--------+----------+
-|         villes| country|population|
-+---------------+--------+----------+
-|         Bogotá|Colombia|  37800000|
-|       New York|    US@A|  19795791|
-|   São Paulo   |  Brazil|  12341418|
-|        ~Madrid|   Spain|   6489162|
-+---------------+--------+----------+
+#+---------------+--------+----------+
+#|         villes| country|population|
+#+---------------+--------+----------+
+#|         Bogotá|Colombia|  37800000|
+#|       New York|    US@A|  19795791|
+#|   São Paulo   |  Brazil|  12341418|
+#|        ~Madrid|   Spain|   6489162|
+#+---------------+--------+----------+
 
 ```
 
-#### * DFTransformer.lookup(column, listStr, StrToReplace)
+#### * DataFrameTransformer.lookup(column, listStr, StrToReplace)
 This method search a list of strings specified in `listStr` argument among rows
 in column dataFrame and replace them for `StrToReplace`.
 
@@ -784,14 +792,14 @@ df.show()
 
 ```python
 
-+---------------+---------+----------+
-|           city|  country|population|
-+---------------+---------+----------+
-|        Caracas|Venezuela|  37800000|
-|            Ccs|Venezuela|  19795791|
-|   São Paulo   |   Brazil|  12341418|
-|        ~Madrid|    Spain|   6489162|
-+---------------+---------+----------+
+#+---------------+---------+----------+
+#|           city|  country|population|
+#+---------------+---------+----------+
+#|        Caracas|Venezuela|  37800000|
+#|            Ccs|Venezuela|  19795791|
+#|   São Paulo   |   Brazil|  12341418|
+#|        ~Madrid|    Spain|   6489162|
+#+---------------+---------+----------+
 
 ```
 
@@ -802,42 +810,42 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # Capital letters:
 transformer.lookup('city', ['Caracas', 'Ccs'], 'Caracas')
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 ```
 
 ```python
 
 Original dataFrame:
-+---------------+---------+----------+
-|           city|  country|population|
-+---------------+---------+----------+
-|        Caracas|Venezuela|  37800000|
-|            Ccs|Venezuela|  19795791|
-|   São Paulo   |   Brazil|  12341418|
-|        ~Madrid|    Spain|   6489162|
-+---------------+---------+----------+
+#+---------------+---------+----------+
+#|           city|  country|population|
+#+---------------+---------+----------+
+#|        Caracas|Venezuela|  37800000|
+#|            Ccs|Venezuela|  19795791|
+#|   São Paulo   |   Brazil|  12341418|
+#|        ~Madrid|    Spain|   6489162|
+#+---------------+---------+----------+
 
 New dataFrame:
-+---------------+---------+----------+
-|           city|  country|population|
-+---------------+---------+----------+
-|        Caracas|Venezuela|  37800000|
-|        Caracas|Venezuela|  19795791|
-|   São Paulo   |   Brazil|  12341418|
-|        ~Madrid|    Spain|   6489162|
-+---------------+---------+----------+
+#+---------------+---------+----------+
+#|           city|  country|population|
+#+---------------+---------+----------+
+#|        Caracas|Venezuela|  37800000|
+#|        Caracas|Venezuela|  19795791|
+#|   São Paulo   |   Brazil|  12341418|
+#|        ~Madrid|    Spain|   6489162|
+#+---------------+---------+----------+
 
 ```
 
-#### * DFTransformer.moveCol(column, refCol, position)
+#### * DataFrameTransformer.moveCol(column, refCol, position)
 This function move a column from one position to another according to the
 reference column `refCol` and `position` argument.
 
@@ -853,41 +861,41 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # Capital letters:
 transformer.moveCol('city', 'country', position='after')
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 ```
 
 ```python
 Original dataFrame:
-+---------------+---------+----------+
-|           city|  country|population|
-+---------------+---------+----------+
-|        Caracas|Venezuela|  37800000|
-|            Ccs|Venezuela|  19795791|
-|   São Paulo   |   Brazil|  12341418|
-|        ~Madrid|    Spain|   6489162|
-+---------------+---------+----------+
+#+---------------+---------+----------+
+#|           city|  country|population|
+#+---------------+---------+----------+
+#|        Caracas|Venezuela|  37800000|
+#|            Ccs|Venezuela|  19795791|
+#|   São Paulo   |   Brazil|  12341418|
+#|        ~Madrid|    Spain|   6489162|
+#+---------------+---------+----------+
 
 New dataFrame:
-+---------+---------------+----------+
-|  country|           city|population|
-+---------+---------------+----------+
-|Venezuela|        Caracas|  37800000|
-|Venezuela|            Ccs|  19795791|
-|   Brazil|   São Paulo   |  12341418|
-|    Spain|        ~Madrid|   6489162|
-+---------+---------------+----------+
+#+---------+---------------+----------+
+#|  country|           city|population|
+#+---------+---------------+----------+
+#|Venezuela|        Caracas|  37800000|
+#|Venezuela|            Ccs|  19795791|
+#|   Brazil|   São Paulo   |  12341418|
+#|    Spain|        ~Madrid|   6489162|
+#+---------+---------------+----------+
 
 ```
 
-#### * DFTransformer.contarTable(coldId, col, newColFeature)
+#### * DataFrameTransformer.contarTable(coldId, col, newColFeature)
 This function can be used to split a feature with some extra information in order
 to make a new column feature.
 
@@ -919,21 +927,19 @@ df.show()
 
 ```python
 
-+-------+---------+
-|bill id|    foods|
-+-------+---------+
-|      1|    Pizza|
-|      2|    Pizza|
-|      2|     Beer|
-|      3|Hamburger|
-|      3|     Beer|
-|      3|     Beer|
-|      3|     Beer|
-|      4|    Pizza|
-|      4|     Beer|
-+-------+---------+
-
-
+#+-------+---------+
+#|bill id|    foods|
+#+-------+---------+
+#|      1|    Pizza|
+#|      2|    Pizza|
+#|      2|     Beer|
+#|      3|Hamburger|
+#|      3|     Beer|
+#|      3|     Beer|
+#|      3|     Beer|
+#|      4|    Pizza|
+#|      4|     Beer|
+#+-------+---------+
 ```
 
 ```python
@@ -942,14 +948,14 @@ transformer = DataFrameTransformer(df)
 
 # Printing of original dataFrame:
 print('Original dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 # Transformation:
 transformer.contarTable('bill id', 'foods', 'Beer')
 
 # Printing new dataFrame:
 print('New dataFrame:')
-transformer.df.show()
+transformer.getDataframe().show()
 
 
 ```
@@ -957,34 +963,34 @@ transformer.df.show()
 
 ```python
 Original dataFrame:
-+-------+---------+
-|bill id|    foods|
-+-------+---------+
-|      1|    Pizza|
-|      2|    Pizza|
-|      2|     Beer|
-|      3|Hamburger|
-|      3|     Beer|
-|      3|     Beer|
-|      3|     Beer|
-|      4|    Pizza|
-|      4|     Beer|
-+-------+---------+
+#+-------+---------+
+#|bill id|    foods|
+#+-------+---------+
+#|      1|    Pizza|
+#|      2|    Pizza|
+#|      2|     Beer|
+#|      3|Hamburger|
+#|      3|     Beer|
+#|      3|     Beer|
+#|      3|     Beer|
+#|      4|    Pizza|
+#|      4|     Beer|
+#+-------+---------+
 
 New dataFrame:
-+-------+---------+----+
-|bill id|    foods|Beer|
-+-------+---------+----+
-|      1|    Pizza|   0|
-|      2|    Pizza|   1|
-|      3|Hamburger|   3|
-|      4|    Pizza|   1|
-+-------+---------+----+
+#+-------+---------+----+
+#|bill id|    foods|Beer|
+#+-------+---------+----+
+#|      1|    Pizza|   0|
+#|      2|    Pizza|   1|
+#|      3|Hamburger|   3|
+#|      4|    Pizza|   1|
+#+-------+---------+----+
 
 ```
 
 
-* DFTransformer.dateTransform(column, currentFormat, outputFormat)
+* DataFrameTransformer.dateTransform(column, currentFormat, outputFormat)
 This method changes date format in `column` from `currentFormat` to `outputFormat`.
 
 The column of dataFrame is expected to be StringType or DateType.
@@ -994,4 +1000,4 @@ The column of dataFrame is expected to be StringType or DateType.
 E.g.
 
 dateTransform(self, column, currentFormat, outputFormat)
-* DFTransformer.ageCalculate(column)
+* DataFrameTransformer.ageCalculate(column)
