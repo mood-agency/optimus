@@ -66,8 +66,8 @@ DataFrameAnalyzer class analyze dataType of rows in each columns of dataFrames.
   <li>
       <h5>Column operations</h5>
         <ol>
-          <li>DataFrameTransformer.dropCol(columns)</li>
-          <li>DataFrameTransformer.replaceCol(search, changeTo, columns)</li>
+          <li>[DataFrameTransformer.dropCol(columns)](#dataframetransformer-class)</li>
+          <li>[DataFrameTransformer.replaceCol(search, changeTo, columns)]</li>
           <li>DataFrameTransformer.keepCol(columns)</li>
           <li>DataFrameTransformer.renameCol(column, newName)</li>
           <li>DataFrameTransformer.moveCol(column, refCol, position)</li>
@@ -82,6 +82,7 @@ DataFrameAnalyzer class analyze dataType of rows in each columns of dataFrames.
         </ol>
 
   </li>
+
 
   <li>
       <h5> String operations</h5>
@@ -114,7 +115,7 @@ DataFrameAnalyzer class analyze dataType of rows in each columns of dataFrames.
 </ul>
 
 
-## Transformer class
+## DataFrameTransformer class
 #### * Transformer(dataFrame)
 
 DataFrameTransformer class receives a dataFrame as an argument. This class has all
@@ -210,11 +211,6 @@ Trimmed dataFrame:
 #|  Madrid|  Spain|   6489162|
 #+--------+-------+----------+
 ```
-## testr
-
-## Hello
-### Hello World
-## New section
 
 #### * Transformer.dropCol(columns)
 
@@ -990,14 +986,94 @@ New dataFrame:
 ```
 
 
-* DataFrameTransformer.dateTransform(column, currentFormat, outputFormat)
+### * DataFrameTransformer.dateTransform(column, currentFormat, outputFormat)
 This method changes date format in `column` from `currentFormat` to `outputFormat`.
 
 The column of dataFrame is expected to be StringType or DateType.
 
-`dateTransform` returns column name
+`dateTransform` returns column name.
 
 E.g.
 
 dateTransform(self, column, currentFormat, outputFormat)
-* DataFrameTransformer.ageCalculate(column)
+
+```python
+
+# Importing sql types
+from pyspark.sql.types import StringType, IntegerType, StructType, StructField
+# Importing DataFrameTransformer library
+from DfTransf import DataFrameTransformer
+
+# Building a simple dataframe:
+schema = StructType([
+        StructField("city", StringType(), True),
+        StructField("dates", StringType(), True),
+        StructField("population", IntegerType(), True)])
+
+countries = ['1991/02/25', '1998/05/10', '1993/03/15', '1992/07/17']
+cities = ['Caracas', 'Ccs', '   São Paulo   ', '~Madrid']
+population = [37800000,19795791,12341418,6489162]
+
+# Dataframe:
+df = sqlContext.createDataFrame(list(zip(cities, countries, population)), schema=schema)
+
+df.show()
+
+```
+```python
+
+#+---------------+----------+----------+
+#|           city|     dates|population|
+#+---------------+----------+----------+
+#|        Caracas|1991/02/25|  37800000|
+#|            Ccs|1998/05/10|  19795791|
+#|   São Paulo   |1993/03/15|  12341418|
+#|        ~Madrid|1992/07/17|   6489162|
+#+---------------+----------+----------+
+
+```
+
+
+```python
+
+# Instanciation of DataTransformer class:
+transformer = DataFrameTransformer(df)
+
+# Printing of original dataFrame:
+print('Original dataFrame:')
+transformer.getDataframe().show()
+
+# Tranform string date format:
+transformer.dateTransform(columns="dates",
+                          currentFormat="yyyy/mm/dd",
+                          outputFormat="dd-mm-yyyy")
+
+# Printing new dataFrame:
+print('New dataFrame:')
+transformer.getDataframe().show()
+
+```
+
+```python
+
+Original dataFrame:
+#+---------------+----------+----------+
+#|           city|     dates|population|
+#+---------------+----------+----------+
+#|        Caracas|1991/02/25|  37800000|
+#|            Ccs|1998/05/10|  19795791|
+#|   São Paulo   |1993/03/15|  12341418|
+#|        ~Madrid|1992/07/17|   6489162|
+#+---------------+----------+----------+
+
+New dataFrame:
+#+---------------+----------+----------+
+#|           city|     dates|population|
+#+---------------+----------+----------+
+#|        Caracas|25-02-1991|  37800000|
+#|            Ccs|10-05-1998|  19795791|
+#|   São Paulo   |15-03-1993|  12341418|
+#|        ~Madrid|17-07-1992|   6489162|
+#+---------------+----------+----------+
+
+```
