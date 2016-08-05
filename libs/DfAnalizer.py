@@ -6,8 +6,6 @@ from pyspark.sql.types import StringType, DoubleType
 import matplotlib.pyplot as plt
 # Importing numeric module
 import numpy as np
-# Importing local dataFrame library
-import pandas as pd
 # Importing features to build tables
 from IPython.display import display, HTML
 # Importing time librarie to measure time
@@ -19,6 +17,10 @@ import pyspark.sql.dataframe
 plt.style.use('ggplot')
 
 class ColumnTables():
+    """This class builds a table to describe the number of the different dataTypes in a column dataFrame.
+
+    It is important to notice that this is not the best way to build a table. It will be better if a general
+    building table class is built"""
     def __init__(self, colName, dataTypeInferred, qtys, percents):
         self.qtys = qtys
         self.percents = percents
@@ -238,6 +240,7 @@ class DataFrameAnalizer():
 
         # Analize of each column:
     def __analize(self, dfColAnalizer, column, rowNumber, plots, printType, valuesBar, numBars, typesDict):
+        t = time.time()
         sampleTableDict = {'string': 0., 'integer': 0, 'float': 0}
         # Calling verification ruotine to obtain datatype's counts
         # returns: [dataframeColumn, number of nulls, number of strings, number of integers, number of floats]
@@ -355,6 +358,7 @@ class DataFrameAnalizer():
             [summaryDict, histPlot, sampleTableDict]
         )
 
+        print ("end of __analyze", time.time() - t)
         return invalidCols, percentages, numbers, columnDict
 
 
@@ -649,7 +653,7 @@ class DataFrameAnalizer():
             binsValues = np.arange(minValue, maxValue + stepsValue, stepsValue)
 
         # Valores unicos:
-        uniValues = [row[0] for row in tempDf.select(column).distinct().collect()]
+        uniValues = [row[0] for row in tempDf.select(column).distinct().take(numBars * 100)]
 
         # Si la cantidad de bins es menor que los valores unicos, entonces se toman los valores unicos como bin.
         if len(binsValues) < len(uniValues):
